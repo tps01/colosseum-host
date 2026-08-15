@@ -6,7 +6,6 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from colosseum_host.host.collectors import common, linux, windows
 
 

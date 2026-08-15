@@ -8,15 +8,12 @@ from pathlib import Path
 from typing import Any
 
 import colosseum
+import pyvisa
 
 from .collectors import common, memory_available_mb, serial_ports_csv, uptime_s
 
 
 def _visa_backend() -> str | None:
-    try:
-        import pyvisa
-    except ImportError:
-        return None
     try:
         rm = pyvisa.ResourceManager()
         return str(rm.visalib)

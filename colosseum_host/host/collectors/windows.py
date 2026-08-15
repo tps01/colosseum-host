@@ -6,6 +6,8 @@ import ctypes
 from ctypes import wintypes
 from typing import Any
 
+from serial.tools import list_ports
+
 
 def _kernel32() -> Any:  # noqa: ANN401
     windll = getattr(ctypes, "windll", None)
@@ -41,10 +43,6 @@ def uptime_s() -> float:
 
 
 def serial_ports_csv() -> str:
-    try:
-        from serial.tools import list_ports
-    except ImportError:
-        return ""
     names = sorted(
         port.device for port in list_ports.comports() if port.device.upper().startswith("COM")
     )

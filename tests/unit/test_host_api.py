@@ -5,15 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from colosseum_host.api import bench, config, system
 from colosseum_host.api._verify import verify_minimum
-
-
-@pytest.fixture
-def ctx(unit_runtime_context):
-    return unit_runtime_context
 
 
 def test_measure_python_version_records_host_domain(ctx) -> None:

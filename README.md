@@ -5,11 +5,13 @@ First-party Colosseum plugin providing `col.host.*` (bench PC prerequisites).
 ## Install
 
 ```bash
-pip install colosseum-core colosseum-shared
-pip install -e ".[test]"
+pip install colosseum-host
 ```
 
-Requires `colosseum-core` 0.15.x and `colosseum-shared` 0.1.x.
+The default install includes the runtime dependencies used for VISA backend
+reporting and serial-port enumeration. A system VISA implementation (such as
+NI-VISA or Keysight IO Libraries) is still required to inspect that vendor's
+VISA backend.
 
 ## Usage
 
@@ -24,6 +26,9 @@ col.endex()
 ## Develop
 
 ```bash
-pip install -e ../colosseum-core -e ../colosseum-shared -e ".[test,static]"
-pytest
+pip install -e ../colosseum-core
+pip install -e ".[test,static]"
+python -m pytest
+ruff check colosseum_host tests examples
+mypy
 ```
