@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "colosseum-host"
-version = "0.1.1"
+version = "0.1.2"
 description = "Colosseum host prerequisites plugin (system/bench/config)"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -12,8 +12,8 @@ license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
   "colosseum-core>=0.15,<0.16",
-  "pyserial>=3.5",
-  "pyvisa>=1.15; python_version >= '3.10'",
+  "pyserial>=3.5,<4",
+  "pyvisa>=1.15,<2; python_version >= '3.10'",
   "pyvisa>=1.14,<1.15; python_version < '3.10'",
 ]
 

@@ -2,7 +2,7 @@
 
 __colosseum_domain__ = "host"
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 from colosseum.config.sections import ConfigSectionSpec
 from colosseum.plugins.registry import PluginRegistry
