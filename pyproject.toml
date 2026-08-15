@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "colosseum-host"
+version = "0.1.0"
+description = "Colosseum host prerequisites plugin (system/bench/config)"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = [
+  "colosseum-core>=0.15,<0.16",
+  "colosseum-shared>=0.1,<0.2",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0"]
+static = [
+  "bandit[toml]>=1.7",
+  "vulture>=2.11",
+  "ruff>=0.8",
+  "mypy>=1.11",
+  "types-pyserial",
+]
+
+[project.entry-points."colosseum.plugins"]
+host = "colosseum_host:register"
+
+[project.entry-points."colosseum.docgen"]
+host = "colosseum_host.docgen_entry:spec"
+
+[tool.setuptools.packages.find]
+include = ["colosseum_host*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+src = ["colosseum_host"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ANN", "ARG", "SIM", "RET", "PTH"]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["colosseum_host"]
+exclude = ["tests/", "build/", "examples/"]
+strict = true
+warn_unused_ignores = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = ["serial.*", "pytest"]
+ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = ["tests", "build", "examples", "docs"]

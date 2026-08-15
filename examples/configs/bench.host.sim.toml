@@ -1,0 +1,5 @@
+﻿# Host plugin sim config fragment
+[host.profile]
+profile_id = 1
+min_disk_gb = 1
+min_memory_mb = 256
