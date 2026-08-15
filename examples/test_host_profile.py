@@ -6,7 +6,7 @@ import colosseum as col
 
 
 def main() -> None:
-    col.config.load_config("examples/configs/bench.sim.toml")
+    col.config.load_config("examples/configs/bench.host.sim.toml")
     col.host.config.verify_bench_config_loaded(key="cfg")
     col.host.system.measure_memory_available_mb(key="mem_mb")
     col.host.system.verify_memory_available_mb(key="mem_mb", minimum=128.0)

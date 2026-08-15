@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from serial.tools import list_ports
+
 
 def memory_available_mb() -> float:
     meminfo = Path("/proc/meminfo").read_text(encoding="utf-8")
@@ -20,9 +22,5 @@ def uptime_s() -> float:
 
 
 def serial_ports_csv() -> str:
-    try:
-        from serial.tools import list_ports
-    except ImportError:
-        return ""
     names = sorted(port.device for port in list_ports.comports() if "/dev/tty" in port.device)
     return ",".join(names)

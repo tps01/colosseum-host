@@ -4,25 +4,70 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.9", "3.12"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: colosseum-host
+      - uses: actions/checkout@v4
+        with:
+          repository: tps01/colosseum-core
+          ref: develop
+          path: colosseum-core
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install
+          cache: pip
+      - name: Install package
+        working-directory: colosseum-host
         run: |
-          python -m pip install -U pip
-          python -m pip install "colosseum-core>=0.15,<0.16" "colosseum-shared>=0.1,<0.2"
-          python -m pip install -e ".[test,static]"
+          python -m pip install --upgrade pip
+          python -m pip install ../colosseum-core
+          python -m pip install .
+          python -m pip install "pytest>=8.0"
+          python -m pip check
+      - name: Smoke test installed runtime
+        working-directory: colosseum-host
+        run: python -I -c "import colosseum_host, pyvisa, serial"
       - name: Test
-        run: pytest -q
-      - name: Static
+        working-directory: colosseum-host
+        run: python -m pytest -q
+
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: colosseum-host
+      - uses: actions/checkout@v4
+        with:
+          repository: tps01/colosseum-core
+          ref: develop
+          path: colosseum-core
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install package and tools
+        working-directory: colosseum-host
         run: |
-          ruff check colosseum_host
-          mypy
+          python -m pip install --upgrade pip
+          python -m pip install ../colosseum-core
+          python -m pip install .
+          python -m pip install "ruff>=0.8" "mypy>=1.11"
+      - name: Lint
+        working-directory: colosseum-host
+        run: ruff check colosseum_host tests examples
+      - name: Type check
+        working-directory: colosseum-host
+        run: mypy

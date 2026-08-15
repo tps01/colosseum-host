@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pyvisa
 from colosseum.decorators import MeasurementSource, VerificationResult, measurement, verification
 
 from colosseum_host.host.collectors import serial_ports_csv
@@ -16,19 +17,10 @@ def measure_visa_backend(*, key: str) -> str:
     :param key: Unique measurement key within domain ``host``.
     :type key: str
 
-    :returns: VISA backend identifier, or empty string if PyVISA is unavailable.
+    :returns: VISA backend identifier, or empty string if no backend can be opened.
     :rtype: str
-
-    :raises ImportError: If ``pyvisa`` is not installed.
     """
     _ = key
-    try:
-        import pyvisa
-    except ImportError as exc:
-        raise ImportError(
-            "pyvisa is required for VISA backend measurement. "
-            "Install with: pip install colosseum[hardware]"
-        ) from exc
     try:
         rm = pyvisa.ResourceManager()
         return str(rm.visalib)
@@ -89,8 +81,7 @@ def verify_visa_available(
         return VerificationResult(
             status="FAIL",
             message=(
-                f"VISA backend {backend!r} is simulated; "
-                "hardware suite requires a real backend"
+                f"VISA backend {backend!r} is simulated; hardware suite requires a real backend"
             ),
             optional=optional,
             actual=backend,

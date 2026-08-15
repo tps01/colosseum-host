@@ -8,7 +8,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
-# Sphinx docgen + packaging (see scripts/cleanup.py)
+# Build and packaging artifacts
 build/
 develop-eggs/
 dist/
@@ -55,7 +55,10 @@ htmlcov/
 # Editors and IDEs
 .idea/
 .vscode/
-.cursor/
+.cursor/*
+!.cursor/rules/
+.cursor/rules/*
+!.cursor/rules/gitflow.mdc
 *.swp
 *.swo
 *~
@@ -77,7 +80,7 @@ Desktop.ini
 # Local notes and agent scratch (normative docs: docs/, examples/)
 scratchpad/
 
-# Offline packaging (see scripts/package_offline.py)
+# Offline packaging artifacts
 wheelhouse/
 offline-bundle/
 colosseum-*-offline-*.tar.gz
