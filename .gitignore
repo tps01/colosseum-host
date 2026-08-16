@@ -83,4 +83,5 @@ scratchpad/
 # Offline packaging artifacts
 wheelhouse/
 offline-bundle/
+*-offline-*.zip
 colosseum-*-offline-*.tar.gz
