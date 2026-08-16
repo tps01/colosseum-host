@@ -8,7 +8,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
-# Build and packaging artifacts
+# Build and packaging artifacts (see scripts/cleanup.py)
 build/
 develop-eggs/
 dist/
