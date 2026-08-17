@@ -8,21 +8,55 @@ from pathlib import Path
 from typing import Any
 
 import colosseum
-import pyvisa
 
-from .collectors import common, memory_available_mb, serial_ports_csv, uptime_s
+from .collectors import (
+    common,
+    list_network_interfaces,
+    meminfo,
+    memory_available_mb,
+    serial_ports_csv,
+    uname_string,
+    uptime_s,
+)
 
 
 def _visa_backend() -> str | None:
     try:
+        import pyvisa
+
         rm = pyvisa.ResourceManager()
         return str(rm.visalib)
     except Exception:
         return None
 
 
+def _network_summary() -> list[dict[str, Any]]:
+    try:
+        return [
+            {
+                "name": iface.name,
+                "mac": iface.mac,
+                "ipv4": list(iface.ipv4 or []),
+                "ipv6": list(iface.ipv6 or []),
+                "operstate": iface.operstate,
+                "mtu": iface.mtu,
+            }
+            for iface in list_network_interfaces(include_loopback=False)
+        ]
+    except (OSError, TypeError, ValueError, AttributeError):
+        return []
+
+
 def collect_profile(*, disk_path: str | None = None) -> dict[str, Any]:
     started = time.perf_counter()
+    try:
+        memory = meminfo().as_dict()
+    except OSError:
+        memory = {"available_mb": memory_available_mb()}
+    try:
+        kernel = uname_string()
+    except OSError:
+        kernel = None
     profile: dict[str, Any] = {
         "colosseum_version": colosseum.__version__,
         "python_version": common.python_version(),
@@ -30,9 +64,13 @@ def collect_profile(*, disk_path: str | None = None) -> dict[str, Any]:
         "machine": common.machine(),
         "hostname": common.hostname(),
         "cpu_count": common.cpu_count(),
-        "memory_available_mb": memory_available_mb(),
+        "cpu_model": common.cpu_model(),
+        "kernel": kernel,
+        "memory_available_mb": memory.get("available_mb", memory_available_mb()),
+        "memory": memory,
         "disk_free_gb": common.disk_free_gb(disk_path),
         "uptime_s": uptime_s(),
+        "network_interfaces": _network_summary(),
         "visa_backend": _visa_backend(),
         "serial_ports": serial_ports_csv(),
         "bench_config_env": common.bench_config_env(),

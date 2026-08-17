@@ -1,8 +1,8 @@
-"""Colosseum host plugin (bench PC prerequisites)."""
+"""Colosseum host plugin (bench PC prerequisites and local telemetry)."""
 
 __colosseum_domain__ = "host"
 
-__version__ = "0.1.2"
+__version__ = "0.3.0"
 
 from colosseum.config.sections import ConfigSectionSpec
 from colosseum.plugins.registry import PluginRegistry
