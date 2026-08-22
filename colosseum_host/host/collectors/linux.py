@@ -112,20 +112,6 @@ def thermal_temp_c(zone: int = 0) -> float:
     return raw / 1000.0 if abs(raw) > 1000 else float(raw)
 
 
-def list_thermal_zones() -> list[int]:
-    root = Path("/sys/class/thermal")
-    if not root.is_dir():
-        return []
-    zones: list[int] = []
-    for entry in sorted(root.iterdir()):
-        if entry.name.startswith("thermal_zone") and (entry / "temp").is_file():
-            try:
-                zones.append(int(entry.name.removeprefix("thermal_zone")))
-            except ValueError:
-                continue
-    return zones
-
-
 def _ioctl_ipv4(name: str, request: int) -> str:
     if _fcntl_mod is None:
         raise OSError("fcntl is not available on this platform")

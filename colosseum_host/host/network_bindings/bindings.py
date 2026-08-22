@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
 from dataclasses import dataclass
 
 
@@ -37,20 +36,3 @@ def list_ipv4_network_bindings(*, include_loopback: bool = False) -> list[IPv4Ne
     if include_loopback:
         return bindings
     return [binding for binding in bindings if not binding.address.startswith("127.")]
-
-
-def bindings_for_blacklist_entry(
-    entry: str, bindings: Sequence[IPv4NetworkBinding]
-) -> list[IPv4NetworkBinding]:
-    """Resolve a blacklist entry (interface name or local IPv4) to matching bindings."""
-    entry = entry.strip()
-    if not entry:
-        return []
-    lowered = entry.lower()
-    for binding in bindings:
-        if binding.address.lower() == lowered:
-            return [binding]
-    matches = [binding for binding in bindings if binding.interface.lower() == lowered]
-    if matches:
-        return matches
-    return []

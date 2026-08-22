@@ -105,10 +105,6 @@ def thermal_temp_c(zone: int = 0) -> float:
     raise _linux_only("thermal_temp_c")
 
 
-def list_thermal_zones() -> list[int]:
-    return []
-
-
 class _IP_ADAPTER_ADDRESSES(ctypes.Structure):
     pass
 

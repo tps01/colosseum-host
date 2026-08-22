@@ -66,10 +66,6 @@ def thermal_temp_c(zone: int = 0) -> float:
     return cast(float, _require_platform().thermal_temp_c(zone=zone))
 
 
-def list_thermal_zones() -> list[int]:
-    return cast(list[int], _require_platform().list_thermal_zones())
-
-
 def list_network_interfaces(*, include_loopback: bool = False) -> list[NetworkInterface]:
     return cast(
         list[NetworkInterface],
@@ -118,7 +114,6 @@ __all__ = [
     "uname_string",
     "loadavg",
     "thermal_temp_c",
-    "list_thermal_zones",
     "list_network_interfaces",
     "network_interface",
     "process_info",
