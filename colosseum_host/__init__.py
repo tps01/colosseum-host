@@ -1,12 +1,17 @@
 """Colosseum host plugin (bench PC prerequisites and local telemetry)."""
 
-__colosseum_domain__ = "host"
-
-__version__ = "0.3.1"
+from importlib import metadata
 
 from colosseum.config.sections import ConfigSectionSpec
 from colosseum.logging import get_logger
 from colosseum.plugins.registry import PluginRegistry
+
+__colosseum_domain__ = "host"
+
+try:
+    __version__ = metadata.version("colosseum-host")
+except metadata.PackageNotFoundError:  # pragma: no cover
+    __version__ = "0.0.0"
 
 _logger = get_logger("colosseum.host")
 
