@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import pyvisa
 from colosseum.decorators import MeasurementSource, VerificationResult, measurement, verification
+from colosseum.logging import get_logger
 
 from colosseum_host.host.collectors import serial_ports_csv
 
 _DOMAIN = "host"
+_logger = get_logger("colosseum.host")
 
 
 @measurement
@@ -23,8 +25,11 @@ def measure_visa_backend(*, key: str) -> str:
     _ = key
     try:
         rm = pyvisa.ResourceManager()
-        return str(rm.visalib)
+        backend = str(rm.visalib)
+        _logger.debug("VISA backend=%s", backend)
+        return backend
     except Exception:
+        _logger.debug("VISA backend unavailable", exc_info=True)
         return ""
 
 

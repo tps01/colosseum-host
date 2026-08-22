@@ -15,6 +15,7 @@ from colosseum.decorators import (
     measurement,
     verification,
 )
+from colosseum.logging import get_logger
 from colosseum.output.artifacts import register_artifact, resolve_artifact_path
 
 from colosseum_host.host.collectors import (
@@ -30,6 +31,7 @@ from colosseum_host.host.collectors import (
 )
 
 _DOMAIN = "host"
+_logger = get_logger("colosseum.host")
 
 _MetricFn = Callable[[dict[str, Any]], float]
 
@@ -192,6 +194,14 @@ def capture(
     :rtype: dict[str, Any]
     """
     artifact_path = resolve_artifact_path(path)
+    _logger.debug(
+        "Host sample capture key=%s metrics=%s interval_s=%s duration_s=%s path=%s",
+        key,
+        tuple(metrics),
+        interval_s,
+        duration_s,
+        artifact_path,
+    )
     kwargs: dict[str, Any] = {"zone": zone}
     if pid is not None:
         kwargs["pid"] = pid

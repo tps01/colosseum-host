@@ -5,11 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 from colosseum.decorators import MeasurementSource, VerificationResult, measurement, verification
+from colosseum.logging import get_logger
 
 from colosseum_host.host.collectors import list_network_interfaces, net_rates, network_interface
 from colosseum_host.host.network_bindings import list_ipv4_network_bindings
 
 _DOMAIN = "host"
+_logger = get_logger("colosseum.host")
 
 
 @measurement
@@ -25,10 +27,16 @@ def measure_bindings(*, key: str, include_loopback: bool = False) -> list[dict[s
     :rtype: list[dict[str, str | int]]
     """
     _ = key
-    return [
+    bindings = [
         binding.as_dict()
         for binding in list_ipv4_network_bindings(include_loopback=include_loopback)
     ]
+    _logger.debug(
+        "IPv4 bindings count=%s include_loopback=%s",
+        len(bindings),
+        include_loopback,
+    )
+    return bindings
 
 
 @measurement

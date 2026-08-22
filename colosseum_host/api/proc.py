@@ -5,15 +5,18 @@ from __future__ import annotations
 from typing import Any
 
 from colosseum.decorators import measurement
+from colosseum.logging import get_logger
 
 from colosseum_host.api._verify import maximum_verifier
 from colosseum_host.host.collectors import find_pids_by_comm, process_info
 
 _DOMAIN = "host"
+_logger = get_logger("colosseum.host")
 
 
 def _resolve_pid(*, pid: int | None, comm: str | None) -> int:
     if pid is not None:
+        _logger.debug("Resolved process pid=%s", pid)
         return int(pid)
     if comm is None:
         raise ValueError("either pid= or comm= is required")
@@ -22,6 +25,7 @@ def _resolve_pid(*, pid: int | None, comm: str | None) -> int:
         raise OSError(f"no process found with comm={comm!r}")
     if len(matches) > 1:
         raise OSError(f"multiple processes found with comm={comm!r}: {matches}")
+    _logger.debug("Resolved process comm=%s pid=%s", comm, matches[0])
     return matches[0]
 
 
