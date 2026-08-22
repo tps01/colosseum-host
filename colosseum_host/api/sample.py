@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 from colosseum.decorators import (
-    MeasurementSource,
     VerificationResult,
     command,
     measurement,
@@ -259,7 +258,7 @@ def _summary_field(row_value: object, field: str) -> float | None:
     return float(row_value[field])
 
 
-@verification(sources=[MeasurementSource(domain=_DOMAIN, command="sample.measure_summary")])
+@verification
 def verify_delta_max(
     *,
     key: str,
@@ -306,7 +305,7 @@ def verify_delta_max(
     )
 
 
-@verification(sources=[MeasurementSource(domain=_DOMAIN, command="sample.measure_summary")])
+@verification
 def verify_max(
     *,
     key: str,

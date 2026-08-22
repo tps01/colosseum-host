@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from colosseum.decorators import MeasurementSource, VerificationResult, measurement, verification
+from colosseum.decorators import VerificationResult, measurement, verification
 from colosseum.logging import get_logger
 
 from colosseum_host.host.collectors import list_network_interfaces, net_rates, network_interface
@@ -185,7 +185,7 @@ def measure_rates(*, key: str, iface: str, interval_s: float = 0.2) -> dict[str,
     return net_rates(iface=iface, interval_s=interval_s).as_dict()
 
 
-@verification(sources=[MeasurementSource(domain=_DOMAIN, command="net.measure_operstate")])
+@verification
 def verify_operstate_up(
     *,
     key: str,
@@ -218,7 +218,7 @@ def verify_operstate_up(
     )
 
 
-@verification(sources=[MeasurementSource(domain=_DOMAIN, command="net.measure_counters")])
+@verification
 def verify_rx_errors(
     *,
     key: str,

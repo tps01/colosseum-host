@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from colosseum.decorators import MeasurementSource, VerificationResult, measurement, verification
+from colosseum.decorators import VerificationResult, measurement, verification
 
 from colosseum_host.api._verify import maximum_verifier, minimum_verifier
 from colosseum_host.host.collectors import (
@@ -319,7 +319,7 @@ verify_cpu_percent = maximum_verifier(
 )
 
 
-@verification(sources=[MeasurementSource(domain=_DOMAIN, command="system.measure_python_version")])
+@verification
 def verify_python_version(
     *,
     key: str,
@@ -357,7 +357,7 @@ def verify_python_version(
     )
 
 
-@verification(sources=[MeasurementSource(domain=_DOMAIN, command="system.measure_platform")])
+@verification
 def verify_platform(
     *,
     key: str,
@@ -393,7 +393,7 @@ def verify_platform(
     )
 
 
-@verification(sources=[MeasurementSource(domain=_DOMAIN, command="system.measure_vmstat")])
+@verification
 def verify_oom_kill(
     *,
     key: str,

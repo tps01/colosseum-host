@@ -7,7 +7,6 @@ from typing import Callable, cast
 
 from colosseum.context import require_context
 from colosseum.decorators import (
-    MeasurementSource,
     VerificationResult,
     missing_measurement_result,
     verification,
@@ -86,7 +85,7 @@ def minimum_verifier(
     )
     return cast(
         Callable[..., VerificationResult],
-        verification(sources=[MeasurementSource(domain=domain, command=source_command)])(verify),
+        verification(verify),
     )
 
 
@@ -161,5 +160,5 @@ def maximum_verifier(
     )
     return cast(
         Callable[..., VerificationResult],
-        verification(sources=[MeasurementSource(domain=domain, command=source_command)])(verify),
+        verification(verify),
     )

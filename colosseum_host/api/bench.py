@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pyvisa
-from colosseum.decorators import MeasurementSource, VerificationResult, measurement, verification
+from colosseum.decorators import VerificationResult, measurement, verification
 from colosseum.logging import get_logger
 
 from colosseum_host.host.collectors import serial_ports_csv
@@ -47,7 +47,7 @@ def measure_serial_ports(*, key: str) -> str:
     return serial_ports_csv()
 
 
-@verification(sources=[MeasurementSource(domain=_DOMAIN, command="bench.measure_visa_backend")])
+@verification
 def verify_visa_available(
     *,
     key: str,

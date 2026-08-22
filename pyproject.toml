@@ -24,9 +24,6 @@ static = ["mypy>=1.11", "ruff>=0.8"]
 [project.entry-points."colosseum.plugins"]
 host = "colosseum_host:register"
 
-[project.entry-points."colosseum.docgen"]
-host = "colosseum_host.docgen_entry:spec"
-
 [tool.setuptools.packages.find]
 include = ["colosseum_host*"]
 
