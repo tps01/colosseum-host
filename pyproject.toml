@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "colosseum-host"
-version = "0.1.2"
-description = "Colosseum host prerequisites plugin (system/bench/config)"
+version = "0.3.2"
+description = "Colosseum host prerequisites and local telemetry plugin"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
@@ -23,9 +23,6 @@ static = ["mypy>=1.11", "ruff>=0.8"]
 
 [project.entry-points."colosseum.plugins"]
 host = "colosseum_host:register"
-
-[project.entry-points."colosseum.docgen"]
-host = "colosseum_host.docgen_entry:spec"
 
 [tool.setuptools.packages.find]
 include = ["colosseum_host*"]
@@ -63,6 +60,9 @@ ignore_missing_imports = true
 module = [
   "colosseum_host.api.bench",
   "colosseum_host.api.config",
+  "colosseum_host.api.net",
+  "colosseum_host.api.proc",
+  "colosseum_host.api.sample",
   "colosseum_host.api.system",
 ]
 disallow_untyped_decorators = false

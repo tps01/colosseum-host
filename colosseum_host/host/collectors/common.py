@@ -28,6 +28,21 @@ def cpu_count() -> float:
     return float(os.cpu_count() or 0)
 
 
+def cpu_model() -> str | None:
+    """Best-effort CPU model string (Linux ``/proc/cpuinfo``, else ``platform.processor``)."""
+    if platform.system() == "Linux":
+        try:
+            for line in Path("/proc/cpuinfo").read_text(encoding="utf-8").splitlines():
+                if line.lower().startswith("model name") or line.lower().startswith(
+                    "hardware"
+                ):
+                    return line.split(":", 1)[1].strip()
+        except OSError:
+            pass
+    proc = platform.processor()
+    return proc or None
+
+
 def disk_free_gb(path: str | Path | None = None) -> float:
     target = Path(path) if path is not None else Path.cwd()
     usage = shutil.disk_usage(target)

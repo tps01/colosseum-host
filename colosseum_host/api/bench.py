@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import pyvisa
-from colosseum.decorators import MeasurementSource, VerificationResult, measurement, verification
+from colosseum.decorators import VerificationResult, measurement, verification
+from colosseum.logging import get_logger
 
 from colosseum_host.host.collectors import serial_ports_csv
 
 _DOMAIN = "host"
+_logger = get_logger("colosseum.host")
 
 
 @measurement
@@ -23,8 +25,11 @@ def measure_visa_backend(*, key: str) -> str:
     _ = key
     try:
         rm = pyvisa.ResourceManager()
-        return str(rm.visalib)
+        backend = str(rm.visalib)
+        _logger.debug("VISA backend=%s", backend)
+        return backend
     except Exception:
+        _logger.debug("VISA backend unavailable", exc_info=True)
         return ""
 
 
@@ -42,7 +47,7 @@ def measure_serial_ports(*, key: str) -> str:
     return serial_ports_csv()
 
 
-@verification(sources=[MeasurementSource(domain=_DOMAIN, command="bench.measure_visa_backend")])
+@verification
 def verify_visa_available(
     *,
     key: str,
@@ -61,10 +66,10 @@ def verify_visa_available(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
-    from colosseum.context import require_context
+    from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 
-    row = require_context().db.get_measurement(
+    row = get_context().db.get_measurement(
         _DOMAIN, "bench.measure_visa_backend", key, row_index=0
     )
     if row is None or row.value is None:
