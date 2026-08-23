@@ -45,7 +45,7 @@ col.host.sample.verify_rss_delta_mb(key="stress", maximum=8.0)
 
 ```bash
 pip install -e ../colosseum-core
-pip install -e ".[test,static]"
+pip install -e .
 python -m pytest
 ruff check colosseum_host tests examples
 mypy
