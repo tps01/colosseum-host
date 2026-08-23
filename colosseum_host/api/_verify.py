@@ -5,7 +5,7 @@ from __future__ import annotations
 import inspect
 from typing import Callable, cast
 
-from colosseum.context import require_context
+from colosseum.context import get_context
 from colosseum.decorators import (
     VerificationResult,
     missing_measurement_result,
@@ -23,7 +23,7 @@ def verify_minimum(
     optional: bool = False,
     unit: str = "",
 ) -> VerificationResult:
-    row = require_context().db.get_measurement(domain, command, key, row_index=0)
+    row = get_context().db.get_measurement(domain, command, key, row_index=0)
     if row is None or row.value is None:
         return missing_measurement_result(key=key, optional=optional)
     actual = float(str(row.value))
@@ -98,7 +98,7 @@ def verify_maximum(
     optional: bool = False,
     unit: str = "",
 ) -> VerificationResult:
-    row = require_context().db.get_measurement(domain, command, key, row_index=0)
+    row = get_context().db.get_measurement(domain, command, key, row_index=0)
     if row is None or row.value is None:
         return missing_measurement_result(key=key, optional=optional)
     actual = float(str(row.value))

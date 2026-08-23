@@ -79,7 +79,7 @@ def collect_profile(*, disk_path: str | None = None) -> dict[str, Any]:
     from colosseum.context import get_context
 
     ctx = get_context()
-    if ctx is not None and ctx.config_path is not None:
+    if ctx.config_path is not None:
         profile["bench_config_path"] = str(ctx.config_path)
     profile["collection_duration_ms"] = round((time.perf_counter() - started) * 1000.0, 2)
     return profile

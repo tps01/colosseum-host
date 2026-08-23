@@ -201,10 +201,10 @@ def verify_operstate_up(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
-    from colosseum.context import require_context
+    from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 
-    row = require_context().db.get_measurement(_DOMAIN, "net.measure_operstate", key, row_index=0)
+    row = get_context().db.get_measurement(_DOMAIN, "net.measure_operstate", key, row_index=0)
     if row is None or row.value is None:
         return missing_measurement_result(key=key, optional=optional)
     actual = str(row.value)
@@ -237,10 +237,10 @@ def verify_rx_errors(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
-    from colosseum.context import require_context
+    from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 
-    row = require_context().db.get_measurement(_DOMAIN, "net.measure_counters", key, row_index=0)
+    row = get_context().db.get_measurement(_DOMAIN, "net.measure_counters", key, row_index=0)
     if row is None or row.value is None:
         return missing_measurement_result(key=key, optional=optional)
     value = row.value

@@ -279,10 +279,10 @@ def verify_delta_max(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
-    from colosseum.context import require_context
+    from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 
-    row = require_context().db.get_measurement(
+    row = get_context().db.get_measurement(
         _DOMAIN, "sample.measure_summary", key, row_index=0
     )
     if row is None or row.value is None:
@@ -324,10 +324,10 @@ def verify_max(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
-    from colosseum.context import require_context
+    from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 
-    row = require_context().db.get_measurement(
+    row = get_context().db.get_measurement(
         _DOMAIN, "sample.measure_summary", key, row_index=0
     )
     if row is None or row.value is None:

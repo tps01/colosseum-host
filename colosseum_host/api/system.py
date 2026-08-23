@@ -338,10 +338,10 @@ def verify_python_version(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
-    from colosseum.context import require_context
+    from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 
-    row = require_context().db.get_measurement(
+    row = get_context().db.get_measurement(
         _DOMAIN, "system.measure_python_version", key, row_index=0
     )
     if row is None or row.value is None:
@@ -376,10 +376,10 @@ def verify_platform(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
-    from colosseum.context import require_context
+    from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 
-    row = require_context().db.get_measurement(_DOMAIN, "system.measure_platform", key, row_index=0)
+    row = get_context().db.get_measurement(_DOMAIN, "system.measure_platform", key, row_index=0)
     if row is None or row.value is None:
         return missing_measurement_result(key=key, optional=optional)
     actual = str(row.value)
@@ -412,10 +412,10 @@ def verify_oom_kill(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
-    from colosseum.context import require_context
+    from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 
-    row = require_context().db.get_measurement(_DOMAIN, "system.measure_vmstat", key, row_index=0)
+    row = get_context().db.get_measurement(_DOMAIN, "system.measure_vmstat", key, row_index=0)
     if row is None or row.value is None:
         return missing_measurement_result(key=key, optional=optional)
     value: Any = row.value
