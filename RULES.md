@@ -1,3 +1,5 @@
+# Rules
+
 ## Approved Software Licenses
 
 Only the following licenses are allowed:
@@ -34,7 +36,7 @@ Only the following licenses are allowed:
 
 ---
 
-# What This Means in Practice
+## What This Means in Practice
 
 - Before adding or updating dependencies, verify license compatibility against this allowlist.
 - If dependency license metadata is ambiguous, treat it as unapproved until clarified.
@@ -42,7 +44,6 @@ Only the following licenses are allowed:
 - If LGPL-covered source modifications are required, treat as non-compliant unless explicitly re-approved and documented before merge.
 - If a dependency violates this rule, do not add it; propose a compliant alternative.
 - If an existing dependency is found non-compliant, flag it immediately for remediation.
-
 
 ## Packaging
 
@@ -60,9 +61,9 @@ Only the following licenses are allowed:
 - Do not prioritize code coverage for the sake of coverage. Better coverage can be achieved by keeping the project small and maintainable.
 - Static analysis does not need to apply to support scripts or tests. That level of meta-testing is not needed for this project.
 
-
 ## Code Quality
 
+- Do not add anything beyond what was asked. No scaffolding, no-ops, exceptions, or stubs outside that scope. If the work needs a new system or a meaningful scope increase, ask first.
 - Do not stub out planned features; that's pointless. This applies to code infrastructure, tests, exceptions, etc.
 - Do not over-use helper functions or lambda functions. While they have a place, sometimes it's more clear to juse do a one-off operation in-line.
 - Avoid magic numbers. Instead define a variable with a semantic meaning, or just place a comment above it.
