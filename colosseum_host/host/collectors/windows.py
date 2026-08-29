@@ -233,7 +233,7 @@ def list_network_interfaces(*, include_loopback: bool = False) -> list[NetworkIn
                 sa = addr_struct.Address
                 if sa.iSockaddrLength >= 16 and sa.lpSockaddr:
                     sockaddr = (ctypes.c_ubyte * sa.iSockaddrLength).from_address(
-                        int(sa.lpSockaddr)
+                        int(sa.lpSockaddr),
                     )
                     family_value = int.from_bytes(sockaddr[0:2], "little")
                     if family_value == socket.AF_INET and sa.iSockaddrLength >= 16:

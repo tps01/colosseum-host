@@ -130,7 +130,7 @@ def list_ipv4_network_bindings(*, include_loopback: bool = False) -> list[IPv4Ne
                                 address=str(iface.ip),
                                 network=str(iface.network.network_address),
                                 prefix=iface.network.prefixlen,
-                            )
+                            ),
                         )
                 next_unicast = addr_struct.Next
                 unicast_ptr = next_unicast if next_unicast else None

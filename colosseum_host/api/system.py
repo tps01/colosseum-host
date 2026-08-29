@@ -342,7 +342,7 @@ def verify_python_version(
     from colosseum.decorators import missing_measurement_result
 
     row = get_context().db.get_measurement(
-        _DOMAIN, "system.measure_python_version", key, row_index=0
+        _DOMAIN, "system.measure_python_version", key, row_index=0,
     )
     if row is None or row.value is None:
         return missing_measurement_result(key=key, optional=optional)

@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
 from colosseum_host.host.collectors import common, linux, types, windows
 from colosseum_host.host.collectors.types import CpuTimes, NetworkInterface
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_disk_free_gb_uses_shutil(tmp_path: Path) -> None:
