@@ -26,7 +26,7 @@ def _visa_backend() -> str | None:
 
         rm = pyvisa.ResourceManager()
         return str(rm.visalib)
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
 
 

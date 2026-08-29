@@ -34,7 +34,7 @@ def cpu_model() -> str | None:
         try:
             for line in Path("/proc/cpuinfo").read_text(encoding="utf-8").splitlines():
                 if line.lower().startswith("model name") or line.lower().startswith(
-                    "hardware"
+                    "hardware",
                 ):
                     return line.split(":", 1)[1].strip()
         except OSError:

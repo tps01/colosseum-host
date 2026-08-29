@@ -12,7 +12,8 @@ pip install colosseum-host
 The default install includes the runtime dependencies used for VISA backend
 reporting and serial-port enumeration. A system VISA implementation (such as
 NI-VISA or Keysight IO Libraries) is still required to inspect that vendor's
-VISA backend. VISA is optional for embedded Linux capture; use `col.host.system`,
+VISA backend. VISA is optional for embedded Linux capture; use
+`col.host.system`,
 `col.host.net`, `col.host.proc`, and `col.host.sample` without it.
 
 ## Usage

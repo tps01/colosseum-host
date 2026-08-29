@@ -33,5 +33,5 @@ def register(registry: PluginRegistry) -> None:
                 "platform",
                 "disk_path",
             ),
-        )
+        ),
     )
