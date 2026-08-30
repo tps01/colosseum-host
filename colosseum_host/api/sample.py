@@ -15,8 +15,8 @@ from colosseum.decorators import (
     verification,
 )
 from colosseum.logging import get_logger
-from colosseum.output.artifacts import register_artifact, resolve_artifact_path
 
+from colosseum_host._paths import resolve_artifact_path
 from colosseum_host.host.collectors import (
     cpu_utilization,
     disk_rates,
@@ -71,16 +71,16 @@ _METRIC_READERS: dict[str, _MetricFn] = {
     "proc.threads": lambda kw: float(process_info(_require_pid(kw)).threads),
     "proc.fd_count": lambda kw: float(process_info(_require_pid(kw)).fd_count or -1),
     "net.rx_bps": lambda kw: net_rates(
-        iface=_require_iface(kw), interval_s=float(kw.get("net_interval_s", 0.1))
+        iface=_require_iface(kw), interval_s=float(kw.get("net_interval_s", 0.1)),
     ).rx_bps,
     "net.tx_bps": lambda kw: net_rates(
-        iface=_require_iface(kw), interval_s=float(kw.get("net_interval_s", 0.1))
+        iface=_require_iface(kw), interval_s=float(kw.get("net_interval_s", 0.1)),
     ).tx_bps,
     "disk.read_bps": lambda kw: disk_rates(
-        device=_require_device(kw), interval_s=float(kw.get("disk_interval_s", 0.1))
+        device=_require_device(kw), interval_s=float(kw.get("disk_interval_s", 0.1)),
     ).read_bps,
     "disk.write_bps": lambda kw: disk_rates(
-        device=_require_device(kw), interval_s=float(kw.get("disk_interval_s", 0.1))
+        device=_require_device(kw), interval_s=float(kw.get("disk_interval_s", 0.1)),
     ).write_bps,
     "vm.pgfault": lambda _kw: float(vmstat().pgfault),
     "vm.oom_kill": lambda _kw: float(vmstat().oom_kill),
@@ -215,11 +215,6 @@ def capture(
         path=Path(artifact_path),
         kwargs=kwargs,
     )
-    register_artifact(
-        "host_sample",
-        artifact_path,
-        description=f"Host metric sample ({key})",
-    )
     # Persist compact numeric summaries as measurements for verifiers.
     for metric_name, summary in result["summaries"].items():
         measure_summary(
@@ -283,7 +278,7 @@ def verify_delta_max(
     from colosseum.decorators import missing_measurement_result
 
     row = get_context().db.get_measurement(
-        _DOMAIN, "sample.measure_summary", key, row_index=0
+        _DOMAIN, "sample.measure_summary", key, row_index=0,
     )
     if row is None or row.value is None:
         return missing_measurement_result(key=key, optional=optional)
@@ -328,7 +323,7 @@ def verify_max(
     from colosseum.decorators import missing_measurement_result
 
     row = get_context().db.get_measurement(
-        _DOMAIN, "sample.measure_summary", key, row_index=0
+        _DOMAIN, "sample.measure_summary", key, row_index=0,
     )
     if row is None or row.value is None:
         return missing_measurement_result(key=key, optional=optional)

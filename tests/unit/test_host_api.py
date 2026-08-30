@@ -90,7 +90,7 @@ def test_verify_bench_config_loaded_without_config(ctx) -> None:
 
 
 def test_verify_bench_config_loaded_with_config(ctx, tmp_path) -> None:
-    ctx.config_path = tmp_path / "bench.toml"
+    ctx.config_path = tmp_path / "config.toml"
     result = config.verify_bench_config_loaded(key="cfg")
     assert result.status == "PASS"
 
@@ -202,7 +202,7 @@ def test_sample_capture_writes_csv_and_summaries(ctx, tmp_path) -> None:
     assert "elapsed_s,metric,value" in text
     assert "memory_available_mb" in text
     summary = ctx.db.get_measurement(
-        "host", "sample.measure_summary", "stress.memory_available_mb", row_index=0
+        "host", "sample.measure_summary", "stress.memory_available_mb", row_index=0,
     )
     assert summary is not None
     assert summary.value["delta"] == -20.0

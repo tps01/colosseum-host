@@ -84,7 +84,7 @@ def minimum_verifier(
         ":rtype: VerificationResult"
     )
     return cast(
-        Callable[..., VerificationResult],
+        "Callable[..., VerificationResult]",
         verification(verify),
     )
 
@@ -159,6 +159,6 @@ def maximum_verifier(
         ":rtype: VerificationResult"
     )
     return cast(
-        Callable[..., VerificationResult],
+        "Callable[..., VerificationResult]",
         verification(verify),
     )

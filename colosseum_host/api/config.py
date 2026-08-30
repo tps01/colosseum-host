@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from colosseum.decorators import VerificationResult, command, verification
 from colosseum.logging import get_logger
-from colosseum.output.artifacts import register_artifact, resolve_artifact_path
 
+from colosseum_host._paths import resolve_artifact_path
 from colosseum_host.host.profile import write_profile
 
 _DOMAIN = "host"
@@ -27,7 +27,6 @@ def capture_host_profile(*, path: str = "host_profile.json", disk_path: str | No
     artifact_path = resolve_artifact_path(path)
     _logger.debug("Writing host profile artifact path=%s disk_path=%s", artifact_path, disk_path)
     write_profile(str(artifact_path), disk_path=disk_path)
-    register_artifact("host_profile", artifact_path, description="Bench PC host profile snapshot")
     return str(artifact_path)
 
 
@@ -51,6 +50,6 @@ def verify_bench_config_loaded(*, key: str, optional: bool = False) -> Verificat
         return VerificationResult(status="PASS", message="", optional=optional)
     return VerificationResult(
         status="FAIL",
-        message="bench config is not loaded (config_path is unset)",
+        message="config is not loaded (config_path is unset)",
         optional=optional,
     )
