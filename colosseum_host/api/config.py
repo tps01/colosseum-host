@@ -50,6 +50,6 @@ def verify_bench_config_loaded(*, key: str, optional: bool = False) -> Verificat
         return VerificationResult(status="PASS", message="", optional=optional)
     return VerificationResult(
         status="FAIL",
-        message="bench config is not loaded (config_path is unset)",
+        message="config is not loaded (config_path is unset)",
         optional=optional,
     )
