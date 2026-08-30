@@ -9,6 +9,9 @@ and Linux-first local telemetry (identity, gauges, and interval sampling).
 pip install colosseum-host
 ```
 
+This requires `colosseum-core` 0.16.1+ and registers the `host` namespace
+through the `colosseum.plugins` entry point.
+
 The default install includes the runtime dependencies used for VISA backend
 reporting and serial-port enumeration. A system VISA implementation (such as
 NI-VISA or Keysight IO Libraries) is still required to inspect that vendor's
@@ -21,7 +24,7 @@ VISA backend. VISA is optional for embedded Linux capture; use
 ```python
 import colosseum as col
 
-col.config.load_config("examples/configs/bench.host.sim.toml")
+col.config.load_config("examples/configs/config.host.sim.toml")
 col.host.system.measure_python_version(key="py")
 col.host.net.measure_mac(key="eth0", iface="eth0")
 col.host.net.measure_bindings(key="bindings")
@@ -41,6 +44,13 @@ col.host.sample.capture(
 )
 col.host.sample.verify_rss_delta_mb(key="stress", maximum=8.0)
 ```
+
+## Expected artifacts
+
+Normal CLI runs write `summary.json`, `summary.txt`, `execution.sqlite`, and
+`debug.log` under the run output directory. When metadata is loaded (see
+`examples/configs/metadata.yaml`), core also emits a WATS-format
+`wats_<datetime>_<script>.json` report alongside those files.
 
 ## Develop
 

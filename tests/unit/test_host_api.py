@@ -90,7 +90,7 @@ def test_verify_bench_config_loaded_without_config(ctx) -> None:
 
 
 def test_verify_bench_config_loaded_with_config(ctx, tmp_path) -> None:
-    ctx.config_path = tmp_path / "bench.toml"
+    ctx.config_path = tmp_path / "config.toml"
     result = config.verify_bench_config_loaded(key="cfg")
     assert result.status == "PASS"
 
