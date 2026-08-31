@@ -21,7 +21,7 @@ Only the following licenses are allowed:
 - X License
 - MIT/X Consortium License
 - Historical Permission Notice and Disclaimer (HPND)
-- GNU Lesser General Public License (LGPL) — allowed only when used unmodified
+- GNU Lesser General Public License (LGPL) - allowed only when used unmodified
   (no source modifications)
 - NASA Open Source Agreement 1.3
 - Public Domain
