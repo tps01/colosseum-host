@@ -30,7 +30,7 @@ def capture_host_profile(*, path: str = "host_profile.json", disk_path: str | No
     return str(artifact_path)
 
 
-@verification()
+@verification
 def verify_bench_config_loaded(*, key: str, optional: bool = False) -> VerificationResult:
     """Verify ``col.config.load_config`` has been called for this run.
 
