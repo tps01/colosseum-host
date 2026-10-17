@@ -3,6 +3,12 @@
 First-party Colosseum plugin providing `col.host.*` for bench-PC prerequisites
 and Linux-first local telemetry (identity, gauges, and interval sampling).
 
+## Documentation
+
+HTML docs (GitHub Pages): https://tps01.github.io/colosseum-host/
+
+Framework hub: https://tps01.github.io/colosseum-core/
+
 ## Install
 
 ```bash
