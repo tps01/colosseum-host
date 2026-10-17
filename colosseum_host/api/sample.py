@@ -18,12 +18,18 @@ from colosseum.logging import get_logger
 
 from colosseum_host._paths import resolve_artifact_path
 from colosseum_host.host.collectors import (
+    cpu_times,
     cpu_utilization,
+    cpu_utilization_from_samples,
     disk_rates,
+    disk_rates_from_samples,
+    diskstats_row,
     loadavg,
     meminfo,
     memory_available_mb,
     net_rates,
+    net_rates_from_samples,
+    network_interface,
     process_info,
     thermal_temp_c,
     vmstat,
@@ -33,6 +39,25 @@ _DOMAIN = "host"
 _logger = get_logger("colosseum.host")
 
 _MetricFn = Callable[[dict[str, Any]], float]
+
+_GAUGE_METRICS = frozenset(
+    {
+        "memory_available_mb",
+        "mem_total_mb",
+        "swap_used_mb",
+        "load1",
+        "temp_c",
+        "proc.rss_mb",
+        "proc.threads",
+        "proc.fd_count",
+        "vm.pgfault",
+        "vm.oom_kill",
+    },
+)
+_CPU_RATE_METRICS = frozenset({"cpu_percent"})
+_NET_RATE_METRICS = frozenset({"net.rx_bps", "net.tx_bps"})
+_DISK_RATE_METRICS = frozenset({"disk.read_bps", "disk.write_bps"})
+_RATE_METRICS = _CPU_RATE_METRICS | _NET_RATE_METRICS | _DISK_RATE_METRICS
 
 
 def _require_pid(kwargs: dict[str, Any]) -> int:
@@ -56,17 +81,15 @@ def _require_device(kwargs: dict[str, Any]) -> str:
     return str(device)
 
 
-def _cpu_percent(kwargs: dict[str, Any]) -> float:
-    return cpu_utilization(interval_s=float(kwargs.get("cpu_interval_s", 0.1))).percent
-
-
 _METRIC_READERS: dict[str, _MetricFn] = {
     "memory_available_mb": lambda _kw: memory_available_mb(),
     "mem_total_mb": lambda _kw: meminfo().total_mb,
     "swap_used_mb": lambda _kw: meminfo().swap_used_mb,
     "load1": lambda _kw: loadavg().load1,
     "temp_c": lambda kw: thermal_temp_c(zone=int(kw.get("zone", 0))),
-    "cpu_percent": _cpu_percent,
+    "cpu_percent": lambda kw: cpu_utilization(
+        interval_s=float(kw.get("cpu_interval_s", 0.1)),
+    ).percent,
     "proc.rss_mb": lambda kw: process_info(_require_pid(kw)).rss_mb,
     "proc.threads": lambda kw: float(process_info(_require_pid(kw)).threads),
     "proc.fd_count": lambda kw: float(process_info(_require_pid(kw)).fd_count or -1),
@@ -104,6 +127,57 @@ def _summarize(values: list[float]) -> dict[str, float]:
     }
 
 
+def _read_rate_family(
+    metrics: Sequence[str],
+    kwargs: dict[str, Any],
+    *,
+    interval_s: float,
+) -> dict[str, float]:
+    """Sample all requested rate metrics with a single shared sleep for the tick."""
+    values: dict[str, float] = {}
+    need_cpu = bool(_CPU_RATE_METRICS.intersection(metrics))
+    need_net = bool(_NET_RATE_METRICS.intersection(metrics))
+    need_disk = bool(_DISK_RATE_METRICS.intersection(metrics))
+    if not (need_cpu or need_net or need_disk):
+        return values
+
+    cpu_first = cpu_times() if need_cpu else None
+    net_first = (
+        network_interface(_require_iface(kwargs), include_counters=True) if need_net else None
+    )
+    disk_first = diskstats_row(_require_device(kwargs)) if need_disk else None
+
+    time.sleep(max(0.01, interval_s))
+
+    if need_cpu and cpu_first is not None:
+        cpu = cpu_utilization_from_samples(cpu_first, cpu_times())
+        if "cpu_percent" in metrics:
+            values["cpu_percent"] = cpu.percent
+    if need_net and net_first is not None:
+        net = net_rates_from_samples(
+            net_first,
+            network_interface(_require_iface(kwargs), include_counters=True),
+            interval_s=interval_s,
+        )
+        if "net.rx_bps" in metrics:
+            values["net.rx_bps"] = net.rx_bps
+        if "net.tx_bps" in metrics:
+            values["net.tx_bps"] = net.tx_bps
+    if need_disk and disk_first is not None:
+        device = _require_device(kwargs)
+        disk = disk_rates_from_samples(
+            disk_first,
+            diskstats_row(device),
+            device=device,
+            interval_s=interval_s,
+        )
+        if "disk.read_bps" in metrics:
+            values["disk.read_bps"] = disk.read_bps
+        if "disk.write_bps" in metrics:
+            values["disk.write_bps"] = disk.write_bps
+    return values
+
+
 def _run_sampler(
     *,
     metrics: Sequence[str],
@@ -123,6 +197,7 @@ def _run_sampler(
     series: dict[str, list[float]] = {name: [] for name in metrics}
     started = time.perf_counter()
     path.parent.mkdir(parents=True, exist_ok=True)
+    has_rates = bool(_RATE_METRICS.intersection(metrics))
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
         writer.writerow(["elapsed_s", "metric", "value"])
@@ -131,16 +206,29 @@ def _run_sampler(
             elapsed = time.perf_counter() - started
             if elapsed > duration_s and sample_index > 0:
                 break
+
+            tick_started = time.perf_counter()
+            tick_values: dict[str, float] = {}
             for name in metrics:
-                value = float(_METRIC_READERS[name](kwargs))
+                if name in _GAUGE_METRICS:
+                    tick_values[name] = float(_METRIC_READERS[name](kwargs))
+
+            if has_rates:
+                tick_values.update(_read_rate_family(metrics, kwargs, interval_s=interval_s))
+            else:
+                remaining_after_gauges = interval_s - (time.perf_counter() - tick_started)
+                if remaining_after_gauges > 0:
+                    time.sleep(remaining_after_gauges)
+
+            for name in metrics:
+                value = float(tick_values[name])
                 series[name].append(value)
                 writer.writerow([f"{elapsed:.3f}", name, f"{value:.6f}"])
+
             sample_index += 1
             elapsed = time.perf_counter() - started
             if elapsed >= duration_s:
                 break
-            remaining = duration_s - elapsed
-            time.sleep(min(interval_s, max(0.0, remaining)))
 
     summaries = {name: _summarize(values) for name, values in series.items()}
     return {
@@ -170,11 +258,15 @@ def capture(
     Preferred for embedded capture: one CSV artifact instead of thousands of SQLite rows.
     Supported metric names are listed by ``available_metrics()``.
 
+    Rate metrics (``cpu_percent``, ``net.*``, ``disk.*``) share a single
+    ``interval_s`` sleep per tick so wall time stays near ``interval_s``, not
+    ``N * nested_interval``.
+
     :param key: Evidence key used for the command row and summary measurements.
     :type key: str
     :param metrics: Metric names to sample.
     :type metrics: Sequence[str], optional
-    :param interval_s: Seconds between samples.
+    :param interval_s: Seconds between samples (also the rate-metric window).
     :type interval_s: float, optional
     :param duration_s: Total sampling duration in seconds.
     :type duration_s: float, optional
@@ -345,6 +437,7 @@ def verify_max(
     )
 
 
+@verification
 def verify_rss_delta_mb(
     *,
     key: str,
@@ -366,6 +459,7 @@ def verify_rss_delta_mb(
     return verify_delta_max(key=f"{key}.proc.rss_mb", maximum=maximum, optional=optional)
 
 
+@verification
 def verify_temp_max_c(
     *,
     key: str,
@@ -387,6 +481,7 @@ def verify_temp_max_c(
     return verify_max(key=f"{key}.temp_c", maximum=maximum, optional=optional)
 
 
+@verification
 def verify_cpu_max_percent(
     *,
     key: str,

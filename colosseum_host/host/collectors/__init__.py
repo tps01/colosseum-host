@@ -5,8 +5,11 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING, cast
 
+from colosseum_host.exceptions import HostCapabilityError
+
 from . import common
 from .types import (
+    CpuTimes,
     CpuUtilization,
     DiskRates,
     LoadAverage,
@@ -94,6 +97,25 @@ def cpu_utilization(*, interval_s: float = 0.2) -> CpuUtilization:
     return cast("CpuUtilization", _require_platform().cpu_utilization(interval_s=interval_s))
 
 
+def cpu_times() -> CpuTimes:
+    platform_mod = _require_platform()
+    if not hasattr(platform_mod, "cpu_times"):
+        raise HostCapabilityError("cpu_times is only available on Linux")
+    return cast("CpuTimes", platform_mod.cpu_times())
+
+
+def cpu_utilization_from_samples(first: CpuTimes, second: CpuTimes) -> CpuUtilization:
+    platform_mod = _require_platform()
+    if not hasattr(platform_mod, "cpu_utilization_from_samples"):
+        raise HostCapabilityError(
+            "cpu_utilization_from_samples is only available on Linux",
+        )
+    return cast(
+        "CpuUtilization",
+        platform_mod.cpu_utilization_from_samples(first, second),
+    )
+
+
 def vmstat() -> VmStat:
     return cast("VmStat", _require_platform().vmstat())
 
@@ -102,8 +124,48 @@ def disk_rates(*, device: str, interval_s: float = 0.2) -> DiskRates:
     return cast("DiskRates", _require_platform().disk_rates(device=device, interval_s=interval_s))
 
 
+def diskstats_row(device: str) -> tuple[int, int, int, int]:
+    platform_mod = _require_platform()
+    if not hasattr(platform_mod, "_diskstats_row"):
+        raise HostCapabilityError("diskstats_row is only available on Linux")
+    return cast("tuple[int, int, int, int]", platform_mod._diskstats_row(device))
+
+
+def disk_rates_from_samples(
+    first: tuple[int, int, int, int],
+    second: tuple[int, int, int, int],
+    *,
+    device: str,
+    interval_s: float,
+) -> DiskRates:
+    platform_mod = _require_platform()
+    if not hasattr(platform_mod, "disk_rates_from_samples"):
+        raise HostCapabilityError("disk_rates_from_samples is only available on Linux")
+    return cast(
+        "DiskRates",
+        platform_mod.disk_rates_from_samples(
+            first, second, device=device, interval_s=interval_s,
+        ),
+    )
+
+
 def net_rates(*, iface: str, interval_s: float = 0.2) -> NetRates:
     return cast("NetRates", _require_platform().net_rates(iface=iface, interval_s=interval_s))
+
+
+def net_rates_from_samples(
+    first: NetworkInterface,
+    second: NetworkInterface,
+    *,
+    interval_s: float,
+) -> NetRates:
+    platform_mod = _require_platform()
+    if not hasattr(platform_mod, "net_rates_from_samples"):
+        raise HostCapabilityError("net_rates_from_samples is only available on Linux")
+    return cast(
+        "NetRates",
+        platform_mod.net_rates_from_samples(first, second, interval_s=interval_s),
+    )
 
 
 __all__ = [
@@ -121,9 +183,15 @@ __all__ = [
     "process_info",
     "find_pids_by_comm",
     "cpu_utilization",
+    "cpu_times",
+    "cpu_utilization_from_samples",
     "vmstat",
     "disk_rates",
+    "diskstats_row",
+    "disk_rates_from_samples",
     "net_rates",
+    "net_rates_from_samples",
+    "CpuTimes",
     "CpuUtilization",
     "DiskRates",
     "LoadAverage",

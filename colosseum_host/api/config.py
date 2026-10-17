@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from colosseum.decorators import VerificationResult, command, verification
 from colosseum.logging import get_logger
 
@@ -10,6 +12,46 @@ from colosseum_host.host.profile import write_profile
 
 _DOMAIN = "host"
 _logger = get_logger("colosseum.host")
+_PROFILE_SECTION = "host.profile"
+
+
+def get_profile(*, profile_id: int | None = None) -> dict[str, Any]:
+    """Return the ``[host.profile]`` section dict from the loaded config.
+
+    When ``profile_id`` is omitted, returns the first registered profile item,
+    or the raw section table when normalization has no items.
+
+    :param profile_id: Optional ``profile_id`` from the config table.
+    :type profile_id: int | None, optional
+
+    :returns: Profile key/value mapping (empty when config is unloaded).
+    :rtype: dict[str, Any]
+    """
+    from colosseum.context import get_context
+
+    ctx = get_context()
+    if ctx.config is None:
+        return {}
+    if profile_id is not None:
+        from colosseum.config.loader import ConfigError
+
+        try:
+            return dict(ctx.config.get_item(_PROFILE_SECTION, profile_id))
+        except ConfigError:
+            return {}
+    items = ctx.config.list_items(_PROFILE_SECTION)
+    if items:
+        return dict(items[0])
+    section = ctx.config.get_section(_PROFILE_SECTION)
+    if isinstance(section, dict):
+        return dict(section)
+    return {}
+
+
+def profile_default(key: str, *, profile_id: int | None = None) -> object | None:
+    """Return an optional ``[host.profile]`` value, or ``None`` when unset."""
+    value = get_profile(profile_id=profile_id).get(key)
+    return value if value not in ("", None) else None
 
 
 @command
@@ -25,8 +67,17 @@ def capture_host_profile(*, path: str = "host_profile.json", disk_path: str | No
     :rtype: str
     """
     artifact_path = resolve_artifact_path(path)
-    _logger.debug("Writing host profile artifact path=%s disk_path=%s", artifact_path, disk_path)
-    write_profile(str(artifact_path), disk_path=disk_path)
+    resolved_disk = disk_path
+    if resolved_disk is None:
+        profile_disk = profile_default("disk_path")
+        if profile_disk is not None:
+            resolved_disk = str(profile_disk)
+    _logger.debug(
+        "Writing host profile artifact path=%s disk_path=%s",
+        artifact_path,
+        resolved_disk,
+    )
+    write_profile(str(artifact_path), disk_path=resolved_disk)
     return str(artifact_path)
 
 
