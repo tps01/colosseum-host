@@ -298,12 +298,14 @@ verify_memory_available_mb = minimum_verifier(
     name="verify_memory_available_mb",
     unit="MB",
     domain=_DOMAIN,
+    profile_key="min_memory_mb",
 )
 verify_disk_free_gb = minimum_verifier(
     "measure_disk_free_gb",
     name="verify_disk_free_gb",
     unit="GB",
     domain=_DOMAIN,
+    profile_key="min_disk_gb",
 )
 verify_thermal_temp_c = maximum_verifier(
     "measure_thermal_temp_c",
@@ -323,7 +325,7 @@ verify_cpu_percent = maximum_verifier(
 def verify_python_version(
     *,
     key: str,
-    version_prefix: str,
+    version_prefix: str | None = None,
     optional: bool = False,
 ) -> VerificationResult:
     """Verify a prior ``measure_python_version`` result starts with a prefix.
@@ -331,7 +333,8 @@ def verify_python_version(
     :param key: Measurement key shared with ``measure_python_version``.
     :type key: str
     :param version_prefix: Required version prefix (for example ``3.11``).
-    :type version_prefix: str
+        When omitted, defaults from ``[host.profile].python_version_prefix``.
+    :type version_prefix: str, optional
     :param optional: When ``True``, FAIL/ERROR does not fail the run at ``col.endex()``.
     :type optional: bool, optional
 
@@ -341,17 +344,30 @@ def verify_python_version(
     from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 
+    from colosseum_host.api.config import profile_default
+
+    resolved = version_prefix
+    if resolved is None:
+        profile_value = profile_default("python_version_prefix")
+        if profile_value is not None:
+            resolved = str(profile_value)
+    if resolved is None:
+        raise TypeError(
+            "verify_python_version requires version_prefix= or "
+            "[host.profile].python_version_prefix",
+        )
+
     row = get_context().db.get_measurement(
         _DOMAIN, "system.measure_python_version", key, row_index=0,
     )
     if row is None or row.value is None:
         return missing_measurement_result(key=key, optional=optional)
     actual = str(row.value)
-    if actual.startswith(version_prefix):
+    if actual.startswith(resolved):
         return VerificationResult(status="PASS", message="", optional=optional, actual=actual)
     return VerificationResult(
         status="FAIL",
-        message=f"expected python version prefix {version_prefix!r}, got {actual!r}",
+        message=f"expected python version prefix {resolved!r}, got {actual!r}",
         optional=optional,
         actual=actual,
     )
@@ -361,7 +377,7 @@ def verify_python_version(
 def verify_platform(
     *,
     key: str,
-    expected_platform: str,
+    expected_platform: str | None = None,
     optional: bool = False,
 ) -> VerificationResult:
     """Verify a prior ``measure_platform`` result matches exactly.
@@ -369,7 +385,8 @@ def verify_platform(
     :param key: Measurement key shared with ``measure_platform``.
     :type key: str
     :param expected_platform: Expected ``platform.system()`` string.
-    :type expected_platform: str
+        When omitted, defaults from ``[host.profile].platform``.
+    :type expected_platform: str, optional
     :param optional: When ``True``, FAIL/ERROR does not fail the run at ``col.endex()``.
     :type optional: bool, optional
 
@@ -379,15 +396,27 @@ def verify_platform(
     from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 
+    from colosseum_host.api.config import profile_default
+
+    resolved = expected_platform
+    if resolved is None:
+        profile_value = profile_default("platform")
+        if profile_value is not None:
+            resolved = str(profile_value)
+    if resolved is None:
+        raise TypeError(
+            "verify_platform requires expected_platform= or [host.profile].platform",
+        )
+
     row = get_context().db.get_measurement(_DOMAIN, "system.measure_platform", key, row_index=0)
     if row is None or row.value is None:
         return missing_measurement_result(key=key, optional=optional)
     actual = str(row.value)
-    if actual == expected_platform:
+    if actual == resolved:
         return VerificationResult(status="PASS", message="", optional=optional, actual=actual)
     return VerificationResult(
         status="FAIL",
-        message=f"expected platform {expected_platform!r}, got {actual!r}",
+        message=f"expected platform {resolved!r}, got {actual!r}",
         optional=optional,
         actual=actual,
     )

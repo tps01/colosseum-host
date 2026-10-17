@@ -42,6 +42,30 @@ def test_verify_memory_minimum_pass_and_fail(ctx) -> None:
     assert fail_result.status == "FAIL"
 
 
+def test_verify_memory_uses_host_profile_default(ctx) -> None:
+    from colosseum.config.loader import ConfigStore
+    from colosseum.config.sections import ConfigSectionSpec
+
+    system.measure_memory_available_mb(key="mem")
+    ctx.config = ConfigStore(
+        _raw={"host": {"profile": {"profile_id": 1, "min_memory_mb": 0.0}}},
+        _normalized={
+            "host.profile": {1: {"profile_id": 1, "min_memory_mb": 0.0}},
+        },
+        _specs={
+            "host.profile": ConfigSectionSpec(
+                "host.profile",
+                "profile_id",
+                required_keys=(),
+                optional_keys=("min_memory_mb",),
+            ),
+        },
+    )
+    result = system.verify_memory_available_mb(key="mem")
+    assert result.status == "PASS"
+    assert config.get_profile(profile_id=1)["min_memory_mb"] == 0.0
+
+
 def test_verify_python_version_prefix(ctx) -> None:
     system.measure_python_version(key="py")
     result = system.verify_python_version(key="py", version_prefix="3.")

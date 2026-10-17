@@ -28,7 +28,7 @@ def measure_visa_backend(*, key: str) -> str:
         backend = str(rm.visalib)
         _logger.debug("VISA backend=%s", backend)
         return backend
-    except Exception:
+    except (OSError, ImportError, AttributeError, RuntimeError, ValueError):
         _logger.debug("VISA backend unavailable", exc_info=True)
         return ""
 

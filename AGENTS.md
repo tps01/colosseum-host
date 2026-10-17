@@ -11,6 +11,21 @@ Baseline expectations for AI agents in this plugin repository.
 - User import remains `import colosseum as col`; this package registers
   namespaces via `colosseum.plugins`.
 
+## Layout helpers
+
+- `colosseum_host/host/network/`: shared Win/Linux adapter enumeration
+  (`list_adapters`). Collectors build `NetworkInterface` rows; 
+  `host/network_bindings` projects subnet strings. Do not re-duplicate
+  GetAdaptersAddresses ctypes layouts or Linux ioctl helpers.
+- `colosseum_host/api/_verify.py`: factory helpers for scalar measurement
+  compares (`minimum_verifier` / `maximum_verifier`), including optional
+  `[host.profile]` default keys.
+- `colosseum_host/api/config.get_profile`: reads `[host.profile]` for verify
+  threshold defaults and `disk_path`.
+- `colosseum_host/exceptions.py`: `HostCapabilityError` for Linux-only ops on
+  Windows (no stub catalogs of unsupported commands).
+- Keep `_paths.py` local; do not move it into core.
+
 ## Change discipline
 
 Prefer focused, compact changes. Do not commit unless asked. Read `RULES.md` at

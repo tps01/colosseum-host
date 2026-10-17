@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import platform
-import socket
-import struct
 import time
 from pathlib import Path
-from typing import Any
 
+from colosseum_host.host.network import list_adapters
+from colosseum_host.host.network.linux import iface_ipv4_endpoints, iface_ipv6, iface_names
 from serial.tools import list_ports
 
 from .types import (
@@ -22,17 +21,6 @@ from .types import (
     ProcessInfo,
     VmStat,
 )
-
-_fcntl_mod: Any = None
-try:
-    import fcntl
-
-    _fcntl_mod = fcntl
-except ModuleNotFoundError:
-    pass
-
-SIOCGIFADDR = 0x8915
-SIOCGIFNETMASK = 0x891B
 
 
 def _read_text(path: Path) -> str:
@@ -112,59 +100,8 @@ def thermal_temp_c(zone: int = 0) -> float:
     return raw / 1000.0 if abs(raw) > 1000 else float(raw)
 
 
-def _ioctl_ipv4(name: str, request: int) -> str:
-    if _fcntl_mod is None:
-        raise OSError("fcntl is not available on this platform")
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        ifreq = struct.pack("256s", name[:15].encode())
-        result = _fcntl_mod.ioctl(sock.fileno(), request, ifreq)
-        return socket.inet_ntoa(result[20:24])
-    finally:
-        sock.close()
-
-
-def _iface_names() -> list[str]:
-    net = Path("/sys/class/net")
-    if net.is_dir():
-        return sorted(p.name for p in net.iterdir() if p.is_dir())
-    try:
-        return [name for _idx, name in socket.if_nameindex()]
-    except OSError:
-        return []
-
-
 def _read_iface_stat(iface: str, name: str) -> int | None:
     return _read_sys_int(Path(f"/sys/class/net/{iface}/statistics/{name}"))
-
-
-def _iface_ipv4(iface: str) -> list[str]:
-    try:
-        return [_ioctl_ipv4(iface, SIOCGIFADDR)]
-    except OSError:
-        return []
-
-
-def _iface_ipv6(iface: str) -> list[str]:
-    path = Path("/proc/net/if_inet6")
-    if not path.is_file():
-        return []
-    addrs: list[str] = []
-    try:
-        text = _read_text(path)
-    except OSError:
-        return []
-    for line in text.splitlines():
-        parts = line.split()
-        if len(parts) < 6 or parts[5] != iface:
-            continue
-        raw = parts[0]
-        try:
-            packed = bytes.fromhex(raw)
-            addrs.append(socket.inet_ntop(socket.AF_INET6, packed))
-        except (OSError, ValueError):
-            continue
-    return addrs
 
 
 def network_interface(iface: str, *, include_counters: bool = True) -> NetworkInterface:
@@ -190,8 +127,8 @@ def network_interface(iface: str, *, include_counters: bool = True) -> NetworkIn
     return NetworkInterface(
         name=iface,
         mac=mac,
-        ipv4=_iface_ipv4(iface),
-        ipv6=_iface_ipv6(iface),
+        ipv4=[ep.address for ep in iface_ipv4_endpoints(iface)],
+        ipv6=list(iface_ipv6(iface)),
         operstate=operstate,
         mtu=mtu,
         rx_bytes=counters.get("rx_bytes"),
@@ -207,9 +144,10 @@ def network_interface(iface: str, *, include_counters: bool = True) -> NetworkIn
 
 def list_network_interfaces(*, include_loopback: bool = False) -> list[NetworkInterface]:
     ifaces: list[NetworkInterface] = []
-    for name in _iface_names():
-        if name == "lo" and not include_loopback:
-            continue
+    names = [adapter.name for adapter in list_adapters(include_loopback=include_loopback)]
+    if not names:
+        names = [name for name in iface_names() if include_loopback or name != "lo"]
+    for name in names:
         try:
             ifaces.append(network_interface(name))
         except OSError:
@@ -361,10 +299,15 @@ def _diskstats_row(device: str) -> tuple[int, int, int, int]:
     raise OSError(f"diskstats entry not found for {device}")
 
 
-def disk_rates(*, device: str, interval_s: float = 0.2) -> DiskRates:
-    r1, rs1, w1, ws1 = _diskstats_row(device)
-    time.sleep(max(0.01, interval_s))
-    r2, rs2, w2, ws2 = _diskstats_row(device)
+def disk_rates_from_samples(
+    first: tuple[int, int, int, int],
+    second: tuple[int, int, int, int],
+    *,
+    device: str,
+    interval_s: float,
+) -> DiskRates:
+    r1, rs1, w1, ws1 = first
+    r2, rs2, w2, ws2 = second
     dt = max(0.01, interval_s)
     # Linux sectors are typically 512 bytes.
     sector = 512.0
@@ -375,6 +318,13 @@ def disk_rates(*, device: str, interval_s: float = 0.2) -> DiskRates:
         read_iops=(r2 - r1) / dt,
         write_iops=(w2 - w1) / dt,
     )
+
+
+def disk_rates(*, device: str, interval_s: float = 0.2) -> DiskRates:
+    first = _diskstats_row(device)
+    time.sleep(max(0.01, interval_s))
+    second = _diskstats_row(device)
+    return disk_rates_from_samples(first, second, device=device, interval_s=interval_s)
 
 
 def net_rates(*, iface: str, interval_s: float = 0.2) -> NetRates:
