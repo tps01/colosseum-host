@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "colosseum-host"
 version = "0.3.7"
-description = "Colosseum host prerequisites and local telemetry plugin"
+description = "Colosseum local host prerequisites and telemetry plugin"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
