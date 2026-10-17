@@ -44,6 +44,7 @@ def minimum_verifier(
     name: str,
     unit: str = "",
     domain: str = "host",
+    profile_key: str | None = None,
 ) -> Callable[..., VerificationResult]:
     frame = inspect.currentframe()
     caller_frame = frame.f_back if frame is not None else None
@@ -57,14 +58,25 @@ def minimum_verifier(
     def verify(
         *,
         key: str,
-        minimum: float,
+        minimum: float | None = None,
         optional: bool = False,
     ) -> VerificationResult:
+        resolved = minimum
+        if resolved is None and profile_key is not None:
+            from colosseum_host.api.config import profile_default
+
+            profile_value = profile_default(profile_key)
+            if profile_value is not None:
+                resolved = float(str(profile_value))
+        if resolved is None:
+            raise TypeError(
+                f"{name} requires minimum= or [host.profile].{profile_key}",
+            )
         return verify_minimum(
             domain=domain,
             command=source_command,
             key=key,
-            minimum=minimum,
+            minimum=resolved,
             optional=optional,
             unit=unit,
         )
@@ -72,12 +84,17 @@ def minimum_verifier(
     verify.__name__ = name
     verify.__qualname__ = name
     verify.__module__ = str(caller_module)
+    profile_note = (
+        f" When omitted, defaults from ``[host.profile].{profile_key}``.\n"
+        if profile_key
+        else "\n"
+    )
     verify.__doc__ = (
         f"Require a prior ``{source_command}`` measurement to be at least a minimum value.\n\n"
         f":param key: Measurement key shared with the prior ``{source_command}`` call.\n"
         ":type key: str\n"
-        ":param minimum: Minimum allowed numeric value.\n"
-        ":type minimum: float\n"
+        f":param minimum: Minimum allowed numeric value.{profile_note}"
+        ":type minimum: float, optional\n"
         ":param optional: When ``True``, FAIL/ERROR does not fail the run at ``col.endex()``.\n"
         ":type optional: bool, optional\n\n"
         ":returns: VerificationResult with PASS, FAIL, or ERROR status.\n"

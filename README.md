@@ -16,15 +16,44 @@ sampling)—useful on lab controllers, CI hosts, and embedded Linux targets alik
 pip install colosseum-host
 ```
 
-This requires `colosseum-core` 0.16.1+ and registers the `host` namespace
+This requires `colosseum-core` 0.16.4+ and registers the `host` namespace
 through the `colosseum.plugins` entry point.
 
-The default install includes the runtime dependencies used for VISA backend
-reporting and serial-port enumeration. A system VISA implementation (such as
-NI-VISA or Keysight IO Libraries) is still required to inspect that vendor's
-VISA backend. VISA is optional when you only need host/OS telemetry; use
-`col.host.system`, `col.host.net`, `col.host.proc`, and `col.host.sample`
-without it.
+The default install always includes `pyserial` and `pyvisa` (packaging policy).
+A system VISA implementation (such as NI-VISA or Keysight IO Libraries) is what
+is optional: without a vendor VISA library you can still use
+`col.host.system`, `col.host.net`, `col.host.proc`, and `col.host.sample`.
+`col.host.bench.measure_visa_backend` needs the vendor stack to inspect that
+backend.
+
+## Platform capability
+
+| Area | Windows | Linux |
+| --- | --- | --- |
+| Identity (python/platform/hostname/cpu count) | yes | yes |
+| Disk free / memory gauges | yes | yes |
+| Serial port list / IPv4 bindings / iface identity | yes | yes |
+| VISA backend probe | yes (vendor VISA optional) | yes (vendor VISA optional) |
+| Load average, thermal, process/CPU/vmstat rates | `HostCapabilityError` | yes |
+| Sample rate metrics (`cpu_percent`, `net.*`, `disk.*`) | `HostCapabilityError` | yes |
+
+Linux-only APIs stay on the public surface; on Windows they raise
+`colosseum_host.exceptions.HostCapabilityError` with a clear message.
+
+## `[host.profile]` defaults
+
+Optional keys in `[host.profile]` supply threshold defaults when verify kwargs
+are omitted (explicit kwargs still win):
+
+| Key | Used by |
+| --- | --- |
+| `min_disk_gb` | `col.host.system.verify_disk_free_gb` |
+| `min_memory_mb` | `col.host.system.verify_memory_available_mb` |
+| `python_version_prefix` | `col.host.system.verify_python_version` |
+| `platform` | `col.host.system.verify_platform` |
+| `disk_path` | `col.host.config.capture_host_profile` (default path) |
+
+Read the section with `col.host.config.get_profile(profile_id=…)`.
 
 ## Usage
 
@@ -51,6 +80,10 @@ col.host.sample.capture(
 )
 col.host.sample.verify_rss_delta_mb(key="stress", maximum=8.0)
 ```
+
+Each sampler tick waits about `interval_s` once. Rate metrics that need an
+interval (`cpu_percent`, `net.*`, `disk.*`) share that single sleep per tick
+instead of nesting one sleep per metric.
 
 ## Expected artifacts
 

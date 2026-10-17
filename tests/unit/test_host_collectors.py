@@ -151,5 +151,7 @@ def test_windows_uptime_s() -> None:
 
 @pytest.mark.skipif(not sys.platform.startswith("win"), reason="Windows-only path")
 def test_windows_linux_only_raises() -> None:
-    with pytest.raises(OSError, match="only available on Linux"):
+    from colosseum_host.exceptions import HostCapabilityError
+
+    with pytest.raises(HostCapabilityError, match="only available on Linux"):
         windows.loadavg()
