@@ -12,11 +12,15 @@ sampling)—useful on lab controllers, CI hosts, and embedded Linux targets alik
 
 ## Install
 
+Download the wheel from [GitHub Releases](https://github.com/tps01/colosseum-host/releases)
+and install it in the same environment as core. Replace `<version>` with
+the downloaded filename. For development, use `python -m pip install -e .`.
+
 ```bash
-pip install colosseum-host
+python -m pip install "./colosseum_host-<version>-py3-none-any.whl"
 ```
 
-This requires `colosseum-core` 0.16.4+ and registers the `host` namespace
+This requires `colosseum-core` `>=0.17.0,<0.18` and registers the `host` namespace
 through the `colosseum.plugins` entry point.
 
 The default install always includes `pyserial` and `pyvisa` (packaging policy).
@@ -53,7 +57,9 @@ are omitted (explicit kwargs still win):
 | `platform` | `col.host.system.verify_platform` |
 | `disk_path` | `col.host.config.capture_host_profile` (default path) |
 
-Read the section with `col.host.config.get_profile(profile_id=…)`.
+Read a selected profile with `col.host.config.get_profile(profile_id=…)`.
+System verifiers use the first profile when limits are omitted; they do not
+accept `profile_id`. Explicit limit kwargs take priority.
 
 ## Usage
 
@@ -62,13 +68,19 @@ import colosseum as col
 
 col.config.load_config("examples/configs/config.host.sim.toml")
 col.host.system.measure_python_version(key="py")
-col.host.net.measure_mac(key="eth0", iface="eth0")
+col.host.system.verify_python_version(key="py")
+col.host.net.measure_interfaces(key="interfaces")
 col.host.net.measure_bindings(key="bindings")
 col.host.config.capture_host_profile(path="host_profile.json")
 col.endex()
 ```
 
-Sample metrics while an external workload runs (stress-ng, iperf, …):
+The config supplies thresholds for the real local host; its historical "sim"
+filename does not imply a simulator. A portable, complete prerequisite check is
+`colosseum run examples/bench_check.py -g examples/configs/config.host.sim.toml`.
+
+On **Linux**, sample an existing external workload (set `app_pid` to its live PID
+first; `temp_c` also requires a thermal zone):
 
 ```python
 col.host.sample.capture(
@@ -88,9 +100,11 @@ instead of nesting one sleep per metric.
 ## Expected artifacts
 
 Normal CLI runs write `summary.json`, `summary.txt`, `execution.sqlite`, and
-`debug.log` under the run output directory. When metadata is loaded (see
-`examples/configs/metadata.yaml`), core also emits a WATS-format
-`wats_<datetime>_<script>.json` report alongside those files.
+`debug.log` under the run output directory. Reports are opt-in: add
+`--report wats` to the run command to write `wats_<datetime>_<script>.json`,
+or `--report junit` for `junit.xml`. Loading `metadata.yaml` enriches an
+enabled report; it does not enable reporting. See the
+[core reporting guide](https://tps01.github.io/colosseum-core/guides/output_artifacts.html).
 
 ## Develop
 
@@ -101,3 +115,7 @@ python -m pytest
 ruff check colosseum_host tests examples
 mypy
 ```
+
+See [telemetry workflows](https://tps01.github.io/colosseum-host/guides/telemetry_workflows.html)
+for a complete subprocess/PID recipe, interface discovery, rate windows and
+summary-key conventions.

@@ -14,24 +14,22 @@ platform) and samples host telemetry.
    profile_id = 1
    min_disk_gb = 1
    min_memory_mb = 256
+   python_version_prefix = "3."
 
 Profile keys feed the matching ``col.host.system.verify_*`` helpers. See
 ``examples/configs/config.host.sim.toml``.
+Despite its historical filename, that file contains thresholds: host reads the
+real local PC and has no simulation driver. Verifiers use the first profile;
+explicit limit arguments override its defaults.
 
 2. Procedure + verification
 ---------------------------
 
-::
+.. literalinclude:: ../../../../examples/bench_check.py
+   :language: python
 
-   import colosseum as col
-
-   def main() -> None:
-       col.host.system.measure_python_version(key="py")
-       col.host.system.verify_python_version(key="py")  # uses profile when set
-       col.host.system.verify_disk_free_gb(profile_id=1)
-       col.host.system.verify_memory_available_mb(profile_id=1)
-
-Optional sampling while an external workload runs::
+Optional sampling while an external workload runs (Linux; ``cpu_percent`` is
+not supported on Windows)::
 
    col.host.sample.capture(
        key="stress",
