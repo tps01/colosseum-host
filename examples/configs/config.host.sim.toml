@@ -1,5 +1,6 @@
-﻿# Host plugin sim config fragment
+﻿# Live local host thresholds; this historical "sim" filename is not a simulator.
 [host.profile]
 profile_id = 1
 min_disk_gb = 1
 min_memory_mb = 256
+python_version_prefix = "3."

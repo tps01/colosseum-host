@@ -256,7 +256,9 @@ def capture(
     """Sample host metrics for a duration, write a CSV artifact, and return summaries.
 
     Preferred for embedded capture: one CSV artifact instead of thousands of SQLite rows.
-    Supported metric names are listed by ``available_metrics()``.
+    Supported metric names are listed by ``available_metrics()``. Requires
+    artifacts enabled. CSV is saved as a file; compact summary measurements
+    use ``{key}.{metric}`` keys, without a CSV artifact-index measurement.
 
     Rate metrics (``cpu_percent``, ``net.*``, ``disk.*``) share a single
     ``interval_s`` sleep per tick so wall time stays near ``interval_s``, not

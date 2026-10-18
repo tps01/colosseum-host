@@ -56,7 +56,10 @@ def profile_default(key: str, *, profile_id: int | None = None) -> object | None
 
 @command
 def capture_host_profile(*, path: str = "host_profile.json", disk_path: str | None = None) -> str:
-    """Write a host profile JSON artifact and register it on the active run.
+    """Save host profile JSON and return its path in the command result.
+
+    Requires artifacts enabled. The command result contains the path; this
+    does not create an ``artifact_path`` measurement index row.
 
     :param path: Relative artifact path under the run directory.
     :type path: str, optional
