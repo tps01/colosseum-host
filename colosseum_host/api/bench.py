@@ -16,6 +16,9 @@ _logger = get_logger("colosseum.host")
 def measure_visa_backend(*, key: str) -> str:
     """Report the active PyVISA backend string.
 
+    Simulated libraries are explicitly marked ``@sim`` even when their native
+    display string omits the marker.
+
     :param key: Unique measurement key within domain ``host``.
     :type key: str
 
@@ -26,6 +29,9 @@ def measure_visa_backend(*, key: str) -> str:
     try:
         rm = pyvisa.ResourceManager()
         backend = str(rm.visalib)
+        # PyVISA-sim's display string is commonly "Visa Library at unset".
+        if type(rm.visalib).__module__.startswith("pyvisa_sim.") and "@sim" not in backend.lower():
+            backend += " (@sim)"
         _logger.debug("VISA backend=%s", backend)
         return backend
     except (OSError, ImportError, AttributeError, RuntimeError, ValueError):
