@@ -98,6 +98,21 @@ def test_verify_visa_available_allows_sim_by_default(ctx) -> None:
     assert result.status == "PASS"
 
 
+def test_sim_backend_without_display_marker_is_rejected_when_required(ctx) -> None:
+    class SimLibrary:
+        __module__ = "pyvisa_sim.highlevel"
+
+        def __str__(self) -> str:
+            return "Visa Library at unset"
+
+    mock_rm = MagicMock()
+    mock_rm.return_value.visalib = SimLibrary()
+    with patch("pyvisa.ResourceManager", mock_rm):
+        bench.measure_visa_backend(key="visa")
+    assert bench.verify_visa_available(key="visa", allow_sim=True).status == "PASS"
+    assert bench.verify_visa_available(key="visa", allow_sim=False).status == "FAIL"
+
+
 def test_capture_host_profile_writes_artifact(ctx) -> None:
     written = config.capture_host_profile(path="host_profile.json")
     path = Path(written)
