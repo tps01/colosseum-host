@@ -74,7 +74,10 @@ def meminfo() -> MemInfo:
 
 
 def uptime_s() -> float:
-    return float(_kernel32().GetTickCount64()) / 1000.0
+    get_tick_count64 = _kernel32().GetTickCount64
+    # Default ctypes restype is c_int, which truncates this 64-bit counter.
+    get_tick_count64.restype = ctypes.c_ulonglong
+    return float(get_tick_count64()) / 1000.0
 
 
 def serial_ports_csv() -> str:
@@ -116,7 +119,8 @@ def list_network_interfaces(*, include_loopback: bool = False) -> list[NetworkIn
 
 
 def network_interface(iface: str, *, include_counters: bool = True) -> NetworkInterface:
-    _ = include_counters
+    if include_counters:
+        raise _linux_only("network counters")
     for item in list_network_interfaces(include_loopback=True):
         if item.name == iface:
             return item

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from typing import Any
 
 from colosseum.decorators import VerificationResult, measurement, verification
@@ -43,12 +44,15 @@ def measure_bindings(*, key: str, include_loopback: bool = False) -> list[dict[s
 def measure_interfaces(*, key: str, include_loopback: bool = False) -> list[dict[str, Any]]:
     """Record local network interfaces as a list of dictionaries.
 
+    Counter fields are filled on Linux. On Windows they stay unset (``None``);
+    that is not a measured zero. Use ``measure_counters`` for counter evidence.
+
     :param key: Unique measurement key within domain ``host``.
     :type key: str
     :param include_loopback: Include loopback interfaces when ``True``.
     :type include_loopback: bool, optional
 
-    :returns: List of interface dictionaries (name, MAC, IPs, counters).
+    :returns: List of interface dictionaries (name, MAC, IPs, and counters on Linux).
     :rtype: list[dict[str, Any]]
     """
     _ = key
@@ -62,6 +66,10 @@ def measure_interfaces(*, key: str, include_loopback: bool = False) -> list[dict
 def measure_interface(*, key: str, iface: str) -> dict[str, Any]:
     """Record a single network interface snapshot.
 
+    Linux snapshots include counters. On Windows, counter collection raises
+    ``HostCapabilityError``, so this records identity only and leaves counter
+    fields unset (``None``), which is not a measured zero.
+
     :param key: Unique measurement key within domain ``host``.
     :type key: str
     :param iface: Interface name (for example ``eth0``).
@@ -71,7 +79,8 @@ def measure_interface(*, key: str, iface: str) -> dict[str, Any]:
     :rtype: dict[str, Any]
     """
     _ = key
-    return network_interface(iface).as_dict()
+    include_counters = not sys.platform.startswith("win")
+    return network_interface(iface, include_counters=include_counters).as_dict()
 
 
 @measurement
@@ -140,14 +149,19 @@ def measure_operstate(*, key: str, iface: str) -> str:
 
 @measurement
 def measure_counters(*, key: str, iface: str) -> dict[str, int | None]:
-    """Record rx/tx byte, packet, error, and drop counters for an interface.
+    """Record rx/tx byte, packet, error, and drop counters for an interface (Linux only).
+
+    Windows does not collect these counters and raises ``HostCapabilityError``
+    instead of returning a mapping of nulls.
 
     :param key: Unique measurement key within domain ``host``.
     :type key: str
     :param iface: Interface name.
     :type iface: str
 
-    :returns: Counter mapping.
+    :returns: Counter mapping. Individual counters may be ``None`` when that
+        sysfs file is unreadable; the call itself does not succeed with every
+        counter unset on an unsupported platform.
     :rtype: dict[str, int | None]
     """
     _ = key
