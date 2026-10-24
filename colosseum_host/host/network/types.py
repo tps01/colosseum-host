@@ -7,10 +7,14 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class IPv4Endpoint:
-    """IPv4 address with CIDR prefix length."""
+    """IPv4 address with CIDR prefix length.
+
+    ``prefix`` is ``None`` when the platform did not provide a usable length.
+    Callers must not substitute a subnet for that missing value.
+    """
 
     address: str
-    prefix: int
+    prefix: int | None
 
 
 @dataclass(frozen=True)

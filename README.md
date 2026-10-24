@@ -38,6 +38,7 @@ backend.
 | Disk free / memory gauges | yes | yes |
 | Serial port list / IPv4 bindings / iface identity | yes | yes |
 | VISA backend probe | yes (vendor VISA optional) | yes (vendor VISA optional) |
+| Interface counters (`measure_counters`) | `HostCapabilityError` | yes |
 | Load average, thermal, process/CPU/vmstat rates | `HostCapabilityError` | yes |
 | Sample rate metrics (`cpu_percent`, `net.*`, `disk.*`) | `HostCapabilityError` | yes |
 
@@ -95,7 +96,13 @@ col.host.sample.verify_rss_delta_mb(key="stress", maximum=8.0)
 
 Each sampler tick waits about `interval_s` once. Rate metrics that need an
 interval (`cpu_percent`, `net.*`, `disk.*`) share that single sleep per tick
-instead of nesting one sleep per metric.
+instead of nesting one sleep per metric. Byte and I/O rates divide by the
+monotonic time between snapshots, so a slow read is not reported as extra
+throughput. CPU percent still comes from counter deltas.
+
+Omitting `path` writes `host_sample_<key>.csv`, so captures with different
+evidence keys keep separate series. Pass `path` to choose a file; that path
+is overwritten when reused.
 
 ## Expected artifacts
 

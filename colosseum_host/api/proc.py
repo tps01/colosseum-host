@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from colosseum.decorators import measurement
+from colosseum.decorators import VerificationResult, measurement, verification
 from colosseum.logging import get_logger
 
 from colosseum_host.api._verify import maximum_verifier
@@ -104,8 +104,12 @@ def measure_fd_count(
     key: str,
     pid: int | None = None,
     comm: str | None = None,
-) -> float:
+) -> float | None:
     """Record open file-descriptor count for a process (Linux only).
+
+    A count of zero is a real observation. When ``/proc/<pid>/fd`` cannot be
+    read the result is ``None``; ``verify_fd_count`` then returns ERROR rather
+    than comparing a sentinel to the limit.
 
     :param key: Unique measurement key within domain ``host``.
     :type key: str
@@ -114,12 +118,14 @@ def measure_fd_count(
     :param comm: Process ``comm`` name when ``pid`` is omitted (must be unique).
     :type comm: str | None, optional
 
-    :returns: FD count as float, or ``-1`` when unreadable.
-    :rtype: float
+    :returns: FD count as float, or ``None`` when unreadable.
+    :rtype: float | None
     """
     _ = key
     count = process_info(_resolve_pid(pid=pid, comm=comm)).fd_count
-    return float(count) if count is not None else -1.0
+    if count is None:
+        return None
+    return float(count)
 
 
 @measurement
@@ -144,9 +150,49 @@ verify_rss_mb = maximum_verifier(
     unit="MB",
     domain=_DOMAIN,
 )
-verify_fd_count = maximum_verifier(
-    "measure_fd_count",
-    name="verify_fd_count",
-    unit="",
-    domain=_DOMAIN,
-)
+
+
+@verification
+def verify_fd_count(
+    *,
+    key: str,
+    maximum: float,
+    optional: bool = False,
+) -> VerificationResult:
+    """Require a prior ``measure_fd_count`` to be at most ``maximum``.
+
+    Zero is a valid count. A missing row or a null value means the FD count
+    was not observed and is ERROR, not a numeric pass.
+
+    :param key: Measurement key shared with ``measure_fd_count``.
+    :type key: str
+    :param maximum: Maximum allowed open file descriptors.
+    :type maximum: float
+    :param optional: When ``True``, FAIL/ERROR does not fail the run at ``col.endex()``.
+    :type optional: bool, optional
+
+    :returns: VerificationResult with PASS, FAIL, or ERROR status.
+    :rtype: VerificationResult
+    """
+    from colosseum.context import get_context
+    from colosseum.decorators import missing_measurement_result
+
+    row = get_context().db.get_measurement(_DOMAIN, "proc.measure_fd_count", key, row_index=0)
+    if row is None:
+        return missing_measurement_result(key=key, optional=optional)
+    if row.value is None:
+        return VerificationResult(
+            status="ERROR",
+            message="file-descriptor count unavailable",
+            optional=optional,
+            actual=None,
+        )
+    actual = float(str(row.value))
+    if actual <= maximum:
+        return VerificationResult(status="PASS", message="", optional=optional, actual=actual)
+    return VerificationResult(
+        status="FAIL",
+        message=f"expected <= {maximum}, got {actual}",
+        optional=optional,
+        actual=actual,
+    )

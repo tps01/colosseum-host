@@ -70,14 +70,17 @@ With an existing interface and block device, use their Linux names (for example
    col.host.sample.verify_cpu_max_percent(key="traffic", maximum=95.0)
    col.host.sample.verify_max(key="traffic.net.rx_bps", maximum=125000000.0)
 
-Rate metrics share one interval wait per tick. ``*_bps`` here is **bytes per
-second**, not bits per second. Sampler measurements use ``{capture_key}.{metric}``
+Rate metrics share one interval wait per tick. Byte and I/O rates use the
+monotonic time between snapshots as the denominator. ``*_bps`` here is **bytes
+per second**, not bits per second. Sampler measurements use ``{capture_key}.{metric}``
 and contain ``min``, ``max``, ``mean``, ``last`` and ``delta``. Generic
 ``verify_max`` / ``verify_delta_max`` take that full key; convenience CPU/RSS/
 temperature verifiers take the capture key and append the metric themselves.
 The example's network maximum is a bench limit to tailor, not a throughput test.
 
-CPU/process/rate/thermal APIs are Linux-first and raise ``HostCapabilityError``
-on Windows when unsupported. ``temp_c`` also requires an existing thermal zone;
-``proc.*`` needs a live PID, ``net.*`` an interface, and ``disk.*`` a block
-device. None of these examples requires a VISA backend or contacts instruments.
+CPU, process, rate, thermal, and interface-counter APIs are Linux-first and
+raise ``HostCapabilityError`` on Windows when unsupported. ``measure_counters``
+does not return a null counter map on Windows. ``temp_c`` also requires an
+existing thermal zone. ``proc.*`` needs a live PID, ``net.*`` an interface, and
+``disk.*`` a block device. None of these examples requires a VISA backend or
+contacts instruments.
