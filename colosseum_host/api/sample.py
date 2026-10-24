@@ -6,7 +6,7 @@ import csv
 import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from colosseum.decorators import (
     VerificationResult,
@@ -18,6 +18,7 @@ from colosseum.logging import get_logger
 
 from colosseum_host._paths import resolve_artifact_path
 from colosseum_host.host.collectors import (
+    NetworkInterface,
     cpu_times,
     cpu_utilization,
     cpu_utilization_from_samples,
@@ -38,7 +39,7 @@ from colosseum_host.host.collectors import (
 _DOMAIN = "host"
 _logger = get_logger("colosseum.host")
 
-_MetricFn = Callable[[dict[str, Any]], float]
+_MetricFn = Callable[[dict[str, Any]], Optional[float]]
 
 _GAUGE_METRICS = frozenset(
     {
@@ -81,6 +82,14 @@ def _require_device(kwargs: dict[str, Any]) -> str:
     return str(device)
 
 
+def _proc_fd_count(kwargs: dict[str, Any]) -> float | None:
+    """Open FD count, preserving zero. ``None`` means ``/proc/<pid>/fd`` was unreadable."""
+    count = process_info(_require_pid(kwargs)).fd_count
+    if count is None:
+        return None
+    return float(count)
+
+
 _METRIC_READERS: dict[str, _MetricFn] = {
     "memory_available_mb": lambda _kw: memory_available_mb(),
     "mem_total_mb": lambda _kw: meminfo().total_mb,
@@ -92,7 +101,7 @@ _METRIC_READERS: dict[str, _MetricFn] = {
     ).percent,
     "proc.rss_mb": lambda kw: process_info(_require_pid(kw)).rss_mb,
     "proc.threads": lambda kw: float(process_info(_require_pid(kw)).threads),
-    "proc.fd_count": lambda kw: float(process_info(_require_pid(kw)).fd_count or -1),
+    "proc.fd_count": _proc_fd_count,
     "net.rx_bps": lambda kw: net_rates(
         iface=_require_iface(kw), interval_s=float(kw.get("net_interval_s", 0.1)),
     ).rx_bps,
@@ -115,15 +124,23 @@ def available_metrics() -> tuple[str, ...]:
     return tuple(sorted(_METRIC_READERS))
 
 
-def _summarize(values: list[float]) -> dict[str, float]:
-    if not values:
-        return {"min": 0.0, "max": 0.0, "last": 0.0, "delta": 0.0, "mean": 0.0}
+def _summarize(values: list[float | None]) -> dict[str, float] | None:
+    """Summarize observed samples.
+
+    ``None`` marks an unavailable sample (for example an unreadable FD count).
+    Those samples are left out of min, max, last, delta, and mean so a sentinel
+    is never averaged in. When every sample is unavailable, return ``None``
+    instead of a zero-filled summary.
+    """
+    observed = [value for value in values if value is not None]
+    if not observed:
+        return None
     return {
-        "min": min(values),
-        "max": max(values),
-        "last": values[-1],
-        "delta": values[-1] - values[0],
-        "mean": sum(values) / len(values),
+        "min": min(observed),
+        "max": max(observed),
+        "last": observed[-1],
+        "delta": observed[-1] - observed[0],
+        "mean": sum(observed) / len(observed),
     }
 
 
@@ -142,22 +159,31 @@ def _read_rate_family(
         return values
 
     cpu_first = cpu_times() if need_cpu else None
-    net_first = (
-        network_interface(_require_iface(kwargs), include_counters=True) if need_net else None
-    )
-    disk_first = diskstats_row(_require_device(kwargs)) if need_disk else None
+    net_first: NetworkInterface | None = None
+    net_started = 0.0
+    if need_net:
+        net_first = network_interface(_require_iface(kwargs), include_counters=True)
+        net_started = time.monotonic()
+    disk_first: tuple[int, int, int, int] | None = None
+    disk_started = 0.0
+    if need_disk:
+        disk_first = diskstats_row(_require_device(kwargs))
+        disk_started = time.monotonic()
 
     time.sleep(max(0.01, interval_s))
 
     if need_cpu and cpu_first is not None:
+        # CPU percent uses counter deltas, not this wall-clock window.
         cpu = cpu_utilization_from_samples(cpu_first, cpu_times())
         if "cpu_percent" in metrics:
             values["cpu_percent"] = cpu.percent
     if need_net and net_first is not None:
+        net_second = network_interface(_require_iface(kwargs), include_counters=True)
+        net_elapsed = time.monotonic() - net_started
         net = net_rates_from_samples(
             net_first,
-            network_interface(_require_iface(kwargs), include_counters=True),
-            interval_s=interval_s,
+            net_second,
+            interval_s=net_elapsed,
         )
         if "net.rx_bps" in metrics:
             values["net.rx_bps"] = net.rx_bps
@@ -165,11 +191,13 @@ def _read_rate_family(
             values["net.tx_bps"] = net.tx_bps
     if need_disk and disk_first is not None:
         device = _require_device(kwargs)
+        disk_second = diskstats_row(device)
+        disk_elapsed = time.monotonic() - disk_started
         disk = disk_rates_from_samples(
             disk_first,
-            diskstats_row(device),
+            disk_second,
             device=device,
-            interval_s=interval_s,
+            interval_s=disk_elapsed,
         )
         if "disk.read_bps" in metrics:
             values["disk.read_bps"] = disk.read_bps
@@ -194,7 +222,7 @@ def _run_sampler(
     if interval_s <= 0:
         raise ValueError("interval_s must be > 0")
 
-    series: dict[str, list[float]] = {name: [] for name in metrics}
+    series: dict[str, list[float | None]] = {name: [] for name in metrics}
     started = time.perf_counter()
     path.parent.mkdir(parents=True, exist_ok=True)
     has_rates = bool(_RATE_METRICS.intersection(metrics))
@@ -208,10 +236,10 @@ def _run_sampler(
                 break
 
             tick_started = time.perf_counter()
-            tick_values: dict[str, float] = {}
+            tick_values: dict[str, float | None] = {}
             for name in metrics:
                 if name in _GAUGE_METRICS:
-                    tick_values[name] = float(_METRIC_READERS[name](kwargs))
+                    tick_values[name] = _METRIC_READERS[name](kwargs)
 
             if has_rates:
                 tick_values.update(_read_rate_family(metrics, kwargs, interval_s=interval_s))
@@ -221,16 +249,24 @@ def _run_sampler(
                     time.sleep(remaining_after_gauges)
 
             for name in metrics:
-                value = float(tick_values[name])
+                value = tick_values[name]
                 series[name].append(value)
-                writer.writerow([f"{elapsed:.3f}", name, f"{value:.6f}"])
+                if value is None:
+                    # Blank cell: the sample was unavailable, not a measured number.
+                    writer.writerow([f"{elapsed:.3f}", name, ""])
+                else:
+                    writer.writerow([f"{elapsed:.3f}", name, f"{value:.6f}"])
 
             sample_index += 1
             elapsed = time.perf_counter() - started
             if elapsed >= duration_s:
                 break
 
-    summaries = {name: _summarize(values) for name, values in series.items()}
+    summaries = {
+        name: summary
+        for name, values in series.items()
+        if (summary := _summarize(values)) is not None
+    }
     return {
         "path": str(path),
         "samples": sample_index,
@@ -247,7 +283,7 @@ def capture(
     metrics: Sequence[str] = ("memory_available_mb", "cpu_percent"),
     interval_s: float = 1.0,
     duration_s: float = 10.0,
-    path: str = "host_sample.csv",
+    path: str | None = None,
     pid: int | None = None,
     iface: str | None = None,
     device: str | None = None,
@@ -260,20 +296,34 @@ def capture(
     artifacts enabled. CSV is saved as a file; compact summary measurements
     use ``{key}.{metric}`` keys, without a CSV artifact-index measurement.
 
+    When ``path`` is omitted, the file is ``host_sample_{key}.csv`` so two
+    captures with different evidence keys do not overwrite each other. An
+    explicit ``path`` is used as given and replaces any existing file there.
+
     Rate metrics (``cpu_percent``, ``net.*``, ``disk.*``) share a single
     ``interval_s`` sleep per tick so wall time stays near ``interval_s``, not
-    ``N * nested_interval``.
+    ``N * nested_interval``. Byte and I/O rates divide by the monotonic time
+    between the two snapshots. CPU percent still uses counter deltas.
 
-    :param key: Evidence key used for the command row and summary measurements.
+    Unavailable gauge samples (``proc.fd_count`` when ``/proc/<pid>/fd`` cannot
+    be read) are blank in the CSV and omitted from summaries. A metric with no
+    observed samples is left out of ``summaries`` and is not recorded, so a
+    later summary verifier reports a missing measurement instead of a numeric
+    pass. A measured zero is kept.
+
+    :param key: Evidence key used for the command row, summary measurements,
+        and the default CSV name.
     :type key: str
     :param metrics: Metric names to sample.
     :type metrics: Sequence[str], optional
-    :param interval_s: Seconds between samples (also the rate-metric window).
+    :param interval_s: Seconds between samples (also the requested rate window).
     :type interval_s: float, optional
     :param duration_s: Total sampling duration in seconds.
     :type duration_s: float, optional
-    :param path: Relative artifact path under the run directory.
-    :type path: str, optional
+    :param path: Relative artifact path under the run directory. Omit it to
+        write ``host_sample_{key}.csv``. Pass a path to choose the file,
+        including when that file should be overwritten.
+    :type path: str | None, optional
     :param pid: Process id for ``proc.*`` metrics.
     :type pid: int | None, optional
     :param iface: Interface name for ``net.*`` metrics.
@@ -286,7 +336,7 @@ def capture(
     :returns: Capture result with path, sample count, and per-metric summaries.
     :rtype: dict[str, Any]
     """
-    artifact_path = resolve_artifact_path(path)
+    artifact_path = resolve_artifact_path(path if path is not None else f"host_sample_{key}.csv")
     _logger.debug(
         "Host sample capture key=%s metrics=%s interval_s=%s duration_s=%s path=%s",
         key,
