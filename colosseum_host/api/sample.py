@@ -6,7 +6,7 @@ import csv
 import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from colosseum.decorators import (
     VerificationResult,
@@ -39,7 +39,7 @@ from colosseum_host.host.collectors import (
 _DOMAIN = "host"
 _logger = get_logger("colosseum.host")
 
-_MetricFn = Callable[[dict[str, Any]], float | None]
+_MetricFn = Callable[[dict[str, Any]], Optional[float]]
 
 _GAUGE_METRICS = frozenset(
     {
