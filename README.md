@@ -97,6 +97,32 @@ Each sampler tick waits about `interval_s` once. Rate metrics that need an
 interval (`cpu_percent`, `net.*`, `disk.*`) share that single sleep per tick
 instead of nesting one sleep per metric.
 
+## Cameras
+
+`col.host.camera` uses OpenCV (Apache 2.0) for local webcams on Windows and
+Linux. The normal install includes `opencv-python-headless`; no GUI or external
+video encoder is required. A working OS camera driver and device permissions
+are required.
+
+```python
+col.host.camera.take_picture(path="camera.jpg", device=0)
+col.host.camera.start_recording(path="camera.avi", device=0, fps=30.0)
+try:
+    # Run the operations you want to record here.
+    col.host.system.measure_hostname(key="host")
+finally:
+    col.host.camera.stop_recording(device=0)
+```
+
+Pictures (JPEG/PNG) and MJPEG/AVI videos are saved under the active run output
+directory. Paths are returned as command results. Reusing a path overwrites its
+contents. Each camera supports one recording at a time; stop it before taking a
+picture. Always stop recording before `col.endex()` so the file is finalized.
+Camera read/open failures and snapshot write failures raise errors; recording
+worker failures are raised by `stop_recording`. Frame rate is a target and
+throughput depends on the camera and host. A stalled camera driver can delay
+`stop_recording` until its pending read returns.
+
 ## Expected artifacts
 
 Normal CLI runs write `summary.json`, `summary.txt`, `execution.sqlite`, and
