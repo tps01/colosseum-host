@@ -12,6 +12,7 @@ license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
   "colosseum-core>=0.17.0,<0.18",
+  "opencv-python-headless>=4.8,<5",
   "pyserial>=3.5,<4",
   "pyvisa>=1.15,<2; python_version >= '3.10'",
   "pyvisa>=1.14,<1.15; python_version < '3.10'",
@@ -60,6 +61,7 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = [
   "colosseum_host.api.bench",
+  "colosseum_host.api.camera",
   "colosseum_host.api.config",
   "colosseum_host.api.net",
   "colosseum_host.api.proc",
