@@ -185,6 +185,10 @@ def measure_counters(*, key: str, iface: str) -> dict[str, int | None]:
 def measure_rates(*, key: str, iface: str, interval_s: float = 0.2) -> dict[str, Any]:
     """Record interface byte/packet rates over a short interval (Linux only).
 
+    ``rx_bps`` and ``tx_bps`` are bytes per second. This API requires Linux;
+    see the Host platform matrix and telemetry workflow guide.
+
+
     :param key: Unique measurement key within domain ``host``.
     :type key: str
     :param iface: Interface name.

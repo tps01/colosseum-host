@@ -6,9 +6,10 @@ API reference (GitHub Pages): https://tps01.github.io/colosseum-host/
 
 Framework hub: https://tps01.github.io/colosseum-core/
 
-First-party Colosseum plugin providing `col.host.*` for local-machine
-prerequisites and Linux-first telemetry (identity, gauges, and interval
-sampling)—useful on lab controllers, CI hosts, and embedded Linux targets alike.
+The Host plugin provides local system information and telemetry on supported
+platforms through `col.host.*`. Host APIs inspect the machine running the
+Colosseum process. To inspect another machine, run the test there or use a
+remote execution mechanism such as Messaging SSH.
 
 ## Install
 
@@ -67,7 +68,7 @@ accept `profile_id`. Explicit limit kwargs take priority.
 ```python
 import colosseum as col
 
-col.config.load_config("examples/configs/config.host.sim.toml")
+col.config.load_config("examples/configs/config.host.example.toml")
 col.host.system.measure_python_version(key="py")
 col.host.system.verify_python_version(key="py")
 col.host.net.measure_interfaces(key="interfaces")
@@ -76,9 +77,9 @@ col.host.config.capture_host_profile(path="host_profile.json")
 col.endex()
 ```
 
-The config supplies thresholds for the real local host; its historical "sim"
-filename does not imply a simulator. A portable, complete prerequisite check is
-`colosseum run examples/bench_check.py -g examples/configs/config.host.sim.toml`.
+The config supplies thresholds for the real local host. The historical
+`config.host.sim.toml` remains available for existing commands. An example that checks local prerequisites is
+`colosseum run examples/bench_check.py -g examples/configs/config.host.example.toml`.
 
 On **Linux**, sample an existing external workload (set `app_pid` to its live PID
 first; `temp_c` also requires a thermal zone):
@@ -130,14 +131,11 @@ worker failures are raised by `stop_recording`. Frame rate is a target and
 throughput depends on the camera and host. A stalled camera driver can delay
 `stop_recording` until its pending read returns.
 
-## Expected artifacts
+## Results
 
-Normal CLI runs write `summary.json`, `summary.txt`, `execution.sqlite`, and
-`debug.log` under the run output directory. Reports are opt-in: add
-`--report wats` to the run command to write `wats_<datetime>_<script>.json`,
-or `--report junit` for `junit.xml`. Loading `metadata.yaml` enriches an
-enabled report; it does not enable reporting. See the
-[core reporting guide](https://tps01.github.io/colosseum-core/guides/output_artifacts.html).
+The plugin uses Colosseum's standard run artifacts. See the
+[core output guide](https://tps01.github.io/colosseum-core/guides/output_artifacts.html)
+for summaries, evidence queries, and opt-in reports.
 
 ## Develop
 
