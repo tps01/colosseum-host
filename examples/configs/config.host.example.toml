@@ -1,0 +1,6 @@
+# Example thresholds for the real machine running Colosseum.
+[host.profile]
+profile_id = 1
+min_disk_gb = 1
+min_memory_mb = 256
+python_version_prefix = "3."

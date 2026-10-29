@@ -2,7 +2,7 @@
 
 Run from this repository root::
 
-    colosseum run examples/bench_check.py -g examples/configs/config.host.sim.toml
+    colosseum run examples/bench_check.py -g examples/configs/config.host.example.toml
 
 Expected: three measurements, three PASS verifications, and the normal core
 evidence files. Disk and memory thresholds describe this bench, not a DUT.
@@ -16,7 +16,7 @@ import colosseum as col
 
 
 def main() -> None:
-    col.config.load_config(str(Path(__file__).with_name("configs") / "config.host.sim.toml"))
+    col.config.load_config(str(Path(__file__).with_name("configs") / "config.host.example.toml"))
     col.host.system.measure_python_version(key="py")
     col.host.system.verify_python_version(key="py")
     col.host.system.measure_disk_free_gb(key="disk")

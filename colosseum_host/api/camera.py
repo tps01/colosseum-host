@@ -66,6 +66,15 @@ def take_picture(*, path: str = "camera.jpg", device: int = 0) -> str:
 
     ``device`` is the OpenCV camera index. Stop a recording on that device before
     taking a picture. Reusing a path overwrites the previous image.
+
+    :param path: Destination under the active run output directory, or an absolute path. Reusing
+        it overwrites the file.
+        Default: ``'camera.jpg'``.
+
+    :param device: OpenCV camera index; defaults to 0. Requires an accessible local camera.
+    :returns: Saved image path as a string.
+    :raises ValueError: Unsupported suffix or the selected camera is recording.
+    :raises RuntimeError: Camera open/read or image write failed.
     """
     with _lock:
         if device in _recordings:
@@ -92,6 +101,17 @@ def start_recording(*, path: str = "camera.avi", device: int = 0, fps: float = 3
     Call ``stop_recording`` in a ``finally`` block to finalize the video before
     ending the run. Reusing a path overwrites the previous recording. The frame
     rate is a target; actual throughput depends on the camera and host.
+
+    :param path: Destination under the active run output directory, or an absolute path. Reusing
+        it overwrites the file.
+        Default: ``'camera.avi'``.
+
+    :param device: OpenCV camera index; defaults to 0. One recording per device is allowed.
+    :param fps: Positive finite target frames per second; defaults to 30. Actual rate depends on
+        the camera and host.
+    :returns: Recording artifact path as a string.
+    :raises ValueError: Invalid frame rate/suffix, device already recording, or output path in use.
+    :raises RuntimeError: Camera or video writer could not open.
     """
     if not math.isfinite(fps) or fps <= 0:
         raise ValueError("fps must be finite and positive")
@@ -109,7 +129,15 @@ def start_recording(*, path: str = "camera.avi", device: int = 0, fps: float = 3
 
 @command
 def stop_recording(*, device: int = 0) -> str:
-    """Stop and finalize a recording; raise if capture failed in the worker."""
+    """Stop and finalize a recording; raise if capture failed in the worker.
+
+    :param device: OpenCV camera index passed to start_recording; defaults to 0.
+    :returns: Finalized recording path as a string.
+    :raises ValueError: No recording is active for the selected device.
+    :raises RuntimeError: The recording worker failed to capture frames.
+
+    A blocked camera read can delay this call. Use it in finally before endex.
+    """
     with _lock:
         recording = _recordings.pop(device, None)
         if recording is None:

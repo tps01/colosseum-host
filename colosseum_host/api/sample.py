@@ -291,6 +291,11 @@ def capture(
 ) -> dict[str, Any]:
     """Sample host metrics for a duration, write a CSV artifact, and return summaries.
 
+    Metrics ``net.rx_bps``, ``net.tx_bps``, ``disk.read_bps``, and
+    ``disk.write_bps`` use bytes per second. Check the platform matrix for
+    Linux-only metrics. Verify capture summaries with the ``verify_*`` APIs.
+
+
     Preferred for embedded capture: one CSV artifact instead of thousands of SQLite rows.
     Supported metric names are listed by ``available_metrics()``. Requires
     artifacts enabled. CSV is saved as a file; compact summary measurements
@@ -335,6 +340,11 @@ def capture(
 
     :returns: Capture result with path, sample count, and per-metric summaries.
     :rtype: dict[str, Any]
+
+
+    Pair with verify_max/verify_delta_max using the full summary key, or with
+    verify_cpu_max_percent/verify_rss_delta_mb using the capture key.
+    See the telemetry workflow and platform matrix.
     """
     artifact_path = resolve_artifact_path(path if path is not None else f"host_sample_{key}.csv")
     _logger.debug(

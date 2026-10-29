@@ -49,7 +49,15 @@ def get_profile(*, profile_id: int | None = None) -> dict[str, Any]:
 
 
 def profile_default(key: str, *, profile_id: int | None = None) -> object | None:
-    """Return an optional ``[host.profile]`` value, or ``None`` when unset."""
+    """Return an optional ``[host.profile]`` value, or ``None`` when unset.
+
+    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
+        evidence lookup rules in the core guide.
+    :param profile_id: Integer ID from the configured host.profile row. Select an existing ID in
+        that section.
+
+    :returns: object | None: Return an optional ``[host.profile]`` value, or ``None`` when unset.
+    """
     value = get_profile(profile_id=profile_id).get(key)
     return value if value not in ("", None) else None
 

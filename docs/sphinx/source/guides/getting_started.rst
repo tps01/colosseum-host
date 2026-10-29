@@ -17,10 +17,10 @@ platform) and samples host telemetry.
    python_version_prefix = "3."
 
 Profile keys feed the matching ``col.host.system.verify_*`` helpers. See
-``examples/configs/config.host.sim.toml``.
-Despite its historical filename, that file contains thresholds: host reads the
-real local PC and has no simulation driver. Verifiers use the first profile;
-explicit limit arguments override its defaults.
+``examples/configs/config.host.example.toml``.
+The file contains thresholds for the real local machine; it does not simulate
+telemetry. The older ``config.host.sim.toml`` remains a compatible example.
+Verifiers use the first profile; explicit limit arguments override its defaults.
 
 2. Procedure + verification
 ---------------------------
@@ -38,12 +38,12 @@ not supported on Windows)::
        duration_s=10.0,
    )
 
-3. Run
-------
+3. Run from the repository root
+-------------------------------
 
 ::
 
-   colosseum run bench_check.py -g config.host.sim.toml
+   colosseum run examples/bench_check.py -g examples/configs/config.host.example.toml
 
 A short copy-out stub is ``host/bench_prerequisites/`` in
 `colosseum-library <https://github.com/tps01/colosseum-library>`__.
