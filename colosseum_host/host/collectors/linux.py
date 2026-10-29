@@ -96,8 +96,8 @@ def thermal_temp_c(zone: int = 0) -> float:
     raw = _read_sys_int(path)
     if raw is None:
         raise OSError(f"thermal zone {zone} unavailable")
-    # Most zones report millidegrees Celsius.
-    return raw / 1000.0 if abs(raw) > 1000 else float(raw)
+    # thermal_zone temp is millidegrees Celsius.
+    return raw / 1000.0
 
 
 def _read_iface_stat(iface: str, name: str) -> int | None:
@@ -322,16 +322,20 @@ def disk_rates_from_samples(
 
 def disk_rates(*, device: str, interval_s: float = 0.2) -> DiskRates:
     first = _diskstats_row(device)
+    started = time.monotonic()
     time.sleep(max(0.01, interval_s))
     second = _diskstats_row(device)
-    return disk_rates_from_samples(first, second, device=device, interval_s=interval_s)
+    elapsed = time.monotonic() - started
+    return disk_rates_from_samples(first, second, device=device, interval_s=elapsed)
 
 
 def net_rates(*, iface: str, interval_s: float = 0.2) -> NetRates:
     first = network_interface(iface, include_counters=True)
+    started = time.monotonic()
     time.sleep(max(0.01, interval_s))
     second = network_interface(iface, include_counters=True)
-    return net_rates_from_samples(first, second, interval_s=interval_s)
+    elapsed = time.monotonic() - started
+    return net_rates_from_samples(first, second, interval_s=elapsed)
 
 
 def net_rates_from_samples(

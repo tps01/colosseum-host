@@ -1,11 +1,11 @@
 Host prerequisite and telemetry workflows
 =========================================
 
-The host plugin reads the **real local machine**. The historical
-``config.host.sim.toml`` filename supplies thresholds, not synthetic readings.
+The host plugin reads the **real local machine**. Host APIs inspect the machine running the Colosseum process, not a remote
+DUT. The example config supplies thresholds, not synthetic readings.
 Run the portable prerequisite script from the repository root::
 
-   colosseum run examples/bench_check.py -g examples/configs/config.host.sim.toml
+   colosseum run examples/bench_check.py -g examples/configs/config.host.example.toml
 
 .. literalinclude:: ../../../../examples/bench_check.py
    :language: python
@@ -32,8 +32,22 @@ JSON and returns its active-run path in the command result. It does not create
 a measurement artifact-index row. File captures require artifacts enabled;
 ordinary system measurements can run with ``--no-artifacts``.
 
-Process sampling (Linux)
-------------------------
+Monitor an existing process (Linux)
+-----------------------------------
+
+Choose a live PID on the machine running Colosseum and substitute it below.
+Place these calls inside a CLI-managed ``main()`` with the profile above::
+
+   col.host.proc.measure_info(key="existing", pid=1234)
+   col.host.sample.capture(key="existing_sample", metrics=("proc.rss_mb", "proc.threads"), pid=1234, interval_s=0.2, duration_s=1.0)
+   col.host.sample.verify_rss_delta_mb(key="existing_sample", maximum=8.0)
+
+The workload must remain alive throughout capture. This procedure does not
+start or stop it. The capture CSV and summary measurements are evidence of
+this local process. See :doc:`/api/sample` for capture and summary verifiers.
+
+Create a self-contained sampling fixture (Linux)
+------------------------------------------------
 
 This complete ``main`` starts and cleans up its own workload, so the PID is
 defined and remains alive during collection. Put it in a script importing
@@ -70,14 +84,26 @@ With an existing interface and block device, use their Linux names (for example
    col.host.sample.verify_cpu_max_percent(key="traffic", maximum=95.0)
    col.host.sample.verify_max(key="traffic.net.rx_bps", maximum=125000000.0)
 
-Rate metrics share one interval wait per tick. ``*_bps`` here is **bytes per
-second**, not bits per second. Sampler measurements use ``{capture_key}.{metric}``
+Rate metrics share one interval wait per tick. Byte and I/O rates use the
+monotonic time between snapshots as the denominator. ``*_bps`` here is **bytes
+per second**, not bits per second. Sampler measurements use ``{capture_key}.{metric}``
 and contain ``min``, ``max``, ``mean``, ``last`` and ``delta``. Generic
 ``verify_max`` / ``verify_delta_max`` take that full key; convenience CPU/RSS/
 temperature verifiers take the capture key and append the metric themselves.
 The example's network maximum is a bench limit to tailor, not a throughput test.
 
-CPU/process/rate/thermal APIs are Linux-first and raise ``HostCapabilityError``
-on Windows when unsupported. ``temp_c`` also requires an existing thermal zone;
-``proc.*`` needs a live PID, ``net.*`` an interface, and ``disk.*`` a block
-device. None of these examples requires a VISA backend or contacts instruments.
+CPU, process, rate, thermal, and interface-counter APIs are Linux-first and
+raise ``HostCapabilityError`` on Windows when unsupported. ``measure_counters``
+does not return a null counter map on Windows. ``temp_c`` also requires an
+existing thermal zone. ``proc.*`` needs a live PID, ``net.*`` an interface, and
+``disk.*`` a block device. None of these examples requires a VISA backend or
+contacts instruments.
+
+Platform support and units
+--------------------------
+
+The `platform matrix <../readme.html#platform-capability>`__ lists Windows and
+Linux support. Linux-only calls raise ``HostCapabilityError`` on Windows.
+``net.rx_bps``, ``net.tx_bps``, ``disk.read_bps``, and ``disk.write_bps`` all
+mean **bytes per second**. Multiply by 8 only when comparing with a limit in
+bits per second. See :doc:`/api/net` and :doc:`/api/sample`.

@@ -14,6 +14,8 @@ def list_ipv4_network_bindings(*, include_loopback: bool = False) -> list[IPv4Ne
     bindings: list[IPv4NetworkBinding] = []
     for adapter in list_adapters(include_loopback=True):
         for endpoint in adapter.ipv4:
+            if endpoint.prefix is None:
+                continue
             try:
                 iface = ipaddress.IPv4Interface(f"{endpoint.address}/{endpoint.prefix}")
             except ValueError:
