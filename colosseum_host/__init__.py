@@ -4,6 +4,7 @@ from importlib import metadata
 
 from colosseum.config.sections import ConfigSectionSpec
 from colosseum.logging import get_logger
+from colosseum.plugins.lazy import lazy_module
 from colosseum.plugins.registry import PluginRegistry
 
 __colosseum_domain__ = "host"
@@ -17,9 +18,7 @@ _logger = get_logger("colosseum.host")
 
 
 def register(registry: PluginRegistry) -> None:
-    from colosseum_host import api
-
-    registry.register_namespace("host", api)
+    registry.register_namespace("host", lazy_module("colosseum_host.api"))
     _logger.debug("Registered col.host namespace")
     registry.register_config_section(
         ConfigSectionSpec(
