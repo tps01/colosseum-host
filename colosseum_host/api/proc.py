@@ -104,12 +104,12 @@ def measure_fd_count(
     key: str,
     pid: int | None = None,
     comm: str | None = None,
-) -> float | None:
+) -> float:
     """Record open file-descriptor count for a process (Linux only).
 
     A count of zero is a real observation. When ``/proc/<pid>/fd`` cannot be
-    read the result is ``None``; ``verify_fd_count`` then returns ERROR rather
-    than comparing a sentinel to the limit.
+    read this raises so the measurement is recorded as ERROR (not a PASS with
+    a null value).
 
     :param key: Unique measurement key within domain ``host``.
     :type key: str
@@ -118,13 +118,15 @@ def measure_fd_count(
     :param comm: Process ``comm`` name when ``pid`` is omitted (must be unique).
     :type comm: str | None, optional
 
-    :returns: FD count as float, or ``None`` when unreadable.
-    :rtype: float | None
+    :returns: FD count as float.
+    :rtype: float
+
+    :raises RuntimeError: When the FD count cannot be read.
     """
     _ = key
     count = process_info(_resolve_pid(pid=pid, comm=comm)).fd_count
     if count is None:
-        return None
+        raise RuntimeError("file-descriptor count unavailable")
     return float(count)
 
 

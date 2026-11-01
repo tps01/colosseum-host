@@ -115,7 +115,9 @@ _METRIC_READERS: dict[str, _MetricFn] = {
         device=_require_device(kw), interval_s=float(kw.get("disk_interval_s", 0.1)),
     ).write_bps,
     "vm.pgfault": lambda _kw: float(vmstat().pgfault),
-    "vm.oom_kill": lambda _kw: float(vmstat().oom_kill),
+    "vm.oom_kill": lambda _kw: (
+        None if (oom := vmstat().oom_kill) is None else float(oom)
+    ),
 }
 
 
@@ -407,6 +409,39 @@ def _summary_field(row_value: object, field: str) -> float | None:
     return float(row_value[field])
 
 
+def _check_summary_bound(
+    *,
+    key: str,
+    field: str,
+    maximum: float,
+    optional: bool,
+) -> VerificationResult:
+    from colosseum.context import get_context
+    from colosseum.decorators import missing_measurement_result
+
+    row = get_context().db.get_measurement(
+        _DOMAIN, "sample.measure_summary", key, row_index=0,
+    )
+    if row is None or row.value is None:
+        return missing_measurement_result(key=key, optional=optional)
+    actual = _summary_field(row.value, field)
+    if actual is None:
+        return VerificationResult(
+            status="ERROR",
+            message=f"summary measurement missing {field}",
+            optional=optional,
+            actual=row.value,
+        )
+    if actual <= maximum:
+        return VerificationResult(status="PASS", message="", optional=optional, actual=actual)
+    return VerificationResult(
+        status="FAIL",
+        message=f"expected {field} <= {maximum}, got {actual}",
+        optional=optional,
+        actual=actual,
+    )
+
+
 @verification
 def verify_delta_max(
     *,
@@ -428,30 +463,7 @@ def verify_delta_max(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
-    from colosseum.context import get_context
-    from colosseum.decorators import missing_measurement_result
-
-    row = get_context().db.get_measurement(
-        _DOMAIN, "sample.measure_summary", key, row_index=0,
-    )
-    if row is None or row.value is None:
-        return missing_measurement_result(key=key, optional=optional)
-    actual = _summary_field(row.value, "delta")
-    if actual is None:
-        return VerificationResult(
-            status="ERROR",
-            message="summary measurement missing delta",
-            optional=optional,
-            actual=row.value,
-        )
-    if actual <= maximum:
-        return VerificationResult(status="PASS", message="", optional=optional, actual=actual)
-    return VerificationResult(
-        status="FAIL",
-        message=f"expected delta <= {maximum}, got {actual}",
-        optional=optional,
-        actual=actual,
-    )
+    return _check_summary_bound(key=key, field="delta", maximum=maximum, optional=optional)
 
 
 @verification
@@ -473,30 +485,7 @@ def verify_max(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
-    from colosseum.context import get_context
-    from colosseum.decorators import missing_measurement_result
-
-    row = get_context().db.get_measurement(
-        _DOMAIN, "sample.measure_summary", key, row_index=0,
-    )
-    if row is None or row.value is None:
-        return missing_measurement_result(key=key, optional=optional)
-    actual = _summary_field(row.value, "max")
-    if actual is None:
-        return VerificationResult(
-            status="ERROR",
-            message="summary measurement missing max",
-            optional=optional,
-            actual=row.value,
-        )
-    if actual <= maximum:
-        return VerificationResult(status="PASS", message="", optional=optional, actual=actual)
-    return VerificationResult(
-        status="FAIL",
-        message=f"expected max <= {maximum}, got {actual}",
-        optional=optional,
-        actual=actual,
-    )
+    return _check_summary_bound(key=key, field="max", maximum=maximum, optional=optional)
 
 
 @verification
@@ -518,7 +507,9 @@ def verify_rss_delta_mb(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
-    return verify_delta_max(key=f"{key}.proc.rss_mb", maximum=maximum, optional=optional)
+    return _check_summary_bound(
+        key=f"{key}.proc.rss_mb", field="delta", maximum=maximum, optional=optional,
+    )
 
 
 @verification
@@ -540,7 +531,9 @@ def verify_temp_max_c(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
-    return verify_max(key=f"{key}.temp_c", maximum=maximum, optional=optional)
+    return _check_summary_bound(
+        key=f"{key}.temp_c", field="max", maximum=maximum, optional=optional,
+    )
 
 
 @verification
@@ -562,4 +555,6 @@ def verify_cpu_max_percent(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
-    return verify_max(key=f"{key}.cpu_percent", maximum=maximum, optional=optional)
+    return _check_summary_bound(
+        key=f"{key}.cpu_percent", field="max", maximum=maximum, optional=optional,
+    )

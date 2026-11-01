@@ -119,10 +119,10 @@ class NetRates:
     tx_bps: float
     rx_pps: float
     tx_pps: float
-    rx_errors: int
-    tx_errors: int
-    rx_dropped: int
-    tx_dropped: int
+    rx_errors: int | None
+    tx_errors: int | None
+    rx_dropped: int | None
+    tx_dropped: int | None
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -149,9 +149,9 @@ class VmStat:
     pgfault: int
     pgpgin: int
     pgpgout: int
-    oom_kill: int
+    oom_kill: int | None
 
-    def as_dict(self) -> dict[str, int]:
+    def as_dict(self) -> dict[str, int | None]:
         return asdict(self)
 
 

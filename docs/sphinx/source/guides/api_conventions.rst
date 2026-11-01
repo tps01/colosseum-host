@@ -13,6 +13,13 @@ Verification FAIL/ERROR/BLOCKED outcomes are recorded without aborting later
 steps. ``optional=True`` excludes an outcome from the aggregate verdict; it
 does not make a later dependent verification optional.
 
+Under ``--dry-run``, OS identity measures (``measure_python_version``,
+``measure_platform``, ``measure_machine``, ``measure_hostname``,
+``measure_cpu_count``, ``measure_cpu_model``, ``measure_uname``,
+``measure_kernel_release``) and ``verify_bench_config_loaded`` use
+``dry_run="call"`` so the walk still records local facts. Capture, camera,
+sampling, and other I/O stay on ``dry_run="log"``.
+
 Keep measurement keys distinct for separate facts. Instrument IDs and channels
 do not distinguish measurements with the same domain, command, key, and row
 index. See `evidence and verification <https://tps01.github.io/colosseum-core/guides/measurements_verifications.html>`__

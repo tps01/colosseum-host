@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "colosseum-host"
-version = "0.5.5"
+version = "0.6.0"
 description = "Colosseum host prerequisites and local telemetry plugin"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
-  "colosseum-core>=0.17.0,<0.18",
+  "colosseum-core>=0.18,<0.19",
   "opencv-python-headless>=4.8,<5; python_version < '3.14'",
   "opencv-python-headless>=5,<6; python_version >= '3.14'",
   "pyserial>=3.5,<4",
