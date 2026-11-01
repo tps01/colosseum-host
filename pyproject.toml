@@ -17,9 +17,6 @@ dependencies = [
   "pyserial>=3.5,<4",
   "pyvisa>=1.15,<2; python_version >= '3.10'",
   "pyvisa>=1.14,<1.15; python_version < '3.10'",
-  "pytest>=8.0",
-  "mypy>=1.11",
-  "ruff>=0.8",
 ]
 
 [project.entry-points."colosseum.plugins"]
