@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import ipaddress
 import sys
 from dataclasses import dataclass
+
+from colosseum_host.host.network import list_adapters
 
 
 @dataclass(frozen=True)
@@ -26,13 +29,25 @@ class IPv4NetworkBinding:
 
 def list_ipv4_network_bindings(*, include_loopback: bool = False) -> list[IPv4NetworkBinding]:
     """Return IPv4 address/subnet bindings for local network interfaces."""
-    if sys.platform.startswith("win"):
-        from . import windows as platform_module
-    elif sys.platform.startswith("linux"):
-        from . import linux as platform_module
-    else:
+    if not (sys.platform.startswith("win") or sys.platform.startswith("linux")):
         return []
-    bindings = platform_module.list_ipv4_network_bindings(include_loopback=include_loopback)
+    bindings: list[IPv4NetworkBinding] = []
+    for adapter in list_adapters(include_loopback=True):
+        for endpoint in adapter.ipv4:
+            if endpoint.prefix is None:
+                continue
+            try:
+                iface = ipaddress.IPv4Interface(f"{endpoint.address}/{endpoint.prefix}")
+            except ValueError:
+                continue
+            bindings.append(
+                IPv4NetworkBinding(
+                    interface=adapter.name,
+                    address=str(iface.ip),
+                    network=str(iface.network.network_address),
+                    prefix=iface.network.prefixlen,
+                ),
+            )
     if include_loopback:
         return bindings
     return [binding for binding in bindings if not binding.address.startswith("127.")]
