@@ -116,7 +116,7 @@ _METRIC_READERS: dict[str, _MetricFn] = {
     ).write_bps,
     "vm.pgfault": lambda _kw: float(vmstat().pgfault),
     "vm.oom_kill": lambda _kw: (
-        None if vmstat().oom_kill is None else float(vmstat().oom_kill)
+        None if (oom := vmstat().oom_kill) is None else float(oom)
     ),
 }
 
