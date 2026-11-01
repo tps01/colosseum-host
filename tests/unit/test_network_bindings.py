@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from colosseum_host.host.network.types import AdapterSnapshot, IPv4Endpoint
 from colosseum_host.host.network_bindings import IPv4NetworkBinding
+from colosseum_host.host.network_bindings import bindings as binding_dispatch
 from colosseum_host.host.network_bindings import windows as win_bindings
 
 
@@ -17,6 +18,29 @@ def test_binding_as_dict() -> None:
         "network": "192.168.1.0",
         "prefix": 24,
     }
+
+
+def test_dispatcher_filters_loopback_unless_requested() -> None:
+    mixed = [
+        IPv4NetworkBinding("lo", "127.0.0.1", "127.0.0.0", 8),
+        IPv4NetworkBinding("eth0", "192.168.1.10", "192.168.1.0", 24),
+    ]
+    with (
+        patch.object(binding_dispatch.sys, "platform", "win32"),
+        patch(
+            "colosseum_host.host.network_bindings.windows.list_ipv4_network_bindings",
+            return_value=mixed,
+        ),
+    ):
+        filtered = binding_dispatch.list_ipv4_network_bindings()
+        with_loopback = binding_dispatch.list_ipv4_network_bindings(include_loopback=True)
+    assert [item.address for item in filtered] == ["192.168.1.10"]
+    assert [item.address for item in with_loopback] == ["127.0.0.1", "192.168.1.10"]
+
+
+def test_dispatcher_returns_empty_on_unsupported_platform() -> None:
+    with patch.object(binding_dispatch.sys, "platform", "darwin"):
+        assert binding_dispatch.list_ipv4_network_bindings() == []
 
 
 def test_windows_binding_keeps_prefix_zero_and_skips_missing_prefix() -> None:
