@@ -257,14 +257,15 @@ def measure_cpu_utilization(*, key: str, interval_s: float = 0.2) -> dict[str, f
 
 
 @measurement
-def measure_vmstat(*, key: str) -> dict[str, int]:
+def measure_vmstat(*, key: str) -> dict[str, int | None]:
     """Record selected ``/proc/vmstat`` counters (Linux only).
 
     :param key: Unique measurement key within domain ``host``.
     :type key: str
 
     :returns: Mapping with ``pgfault``, ``pgpgin``, ``pgpgout``, ``oom_kill``.
-    :rtype: dict[str, int]
+        ``oom_kill`` is ``None`` when the kernel does not publish the counter.
+    :rtype: dict[str, int | None]
     """
     _ = key
     return vmstat().as_dict()
@@ -452,6 +453,13 @@ def verify_oom_kill(
         return VerificationResult(
             status="ERROR",
             message="vmstat measurement missing oom_kill",
+            optional=optional,
+            actual=value,
+        )
+    if value["oom_kill"] is None:
+        return VerificationResult(
+            status="ERROR",
+            message="oom_kill counter unavailable",
             optional=optional,
             actual=value,
         )

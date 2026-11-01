@@ -108,10 +108,10 @@ def verify_bench_config_loaded(*, key: str, optional: bool = False) -> Verificat
     from colosseum.context import get_context
 
     ctx = get_context()
-    if ctx.config_path is not None:
+    if ctx.config is not None:
         return VerificationResult(status="PASS", message="", optional=optional)
     return VerificationResult(
         status="FAIL",
-        message="config is not loaded (config_path is unset)",
+        message="config is not loaded (config store is unset)",
         optional=optional,
     )

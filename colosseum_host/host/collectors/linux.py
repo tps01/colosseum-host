@@ -278,11 +278,12 @@ def vmstat() -> VmStat:
             fields[parts[0]] = int(parts[1])
         except ValueError:
             continue
+    oom = fields.get("oom_kill")
     return VmStat(
         pgfault=fields.get("pgfault", 0),
         pgpgin=fields.get("pgpgin", 0),
         pgpgout=fields.get("pgpgout", 0),
-        oom_kill=fields.get("oom_kill", 0),
+        oom_kill=oom if oom is not None else None,
     )
 
 
@@ -348,7 +349,7 @@ def net_rates_from_samples(
 
     def delta(a: int | None, b: int | None) -> float:
         if a is None or b is None:
-            return 0.0
+            raise ValueError("network counters unavailable for rate calculation")
         return float(b - a)
 
     return NetRates(
@@ -357,8 +358,8 @@ def net_rates_from_samples(
         tx_bps=delta(first.tx_bytes, second.tx_bytes) / dt,
         rx_pps=delta(first.rx_packets, second.rx_packets) / dt,
         tx_pps=delta(first.tx_packets, second.tx_packets) / dt,
-        rx_errors=int(second.rx_errors or 0),
-        tx_errors=int(second.tx_errors or 0),
-        rx_dropped=int(second.rx_dropped or 0),
-        tx_dropped=int(second.tx_dropped or 0),
+        rx_errors=None if second.rx_errors is None else int(second.rx_errors),
+        tx_errors=None if second.tx_errors is None else int(second.tx_errors),
+        rx_dropped=None if second.rx_dropped is None else int(second.rx_dropped),
+        tx_dropped=None if second.tx_dropped is None else int(second.tx_dropped),
     )

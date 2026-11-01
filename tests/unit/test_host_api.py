@@ -134,6 +134,8 @@ def test_verify_bench_config_loaded_without_config(ctx) -> None:
 
 def test_verify_bench_config_loaded_with_config(ctx, tmp_path) -> None:
     ctx.config_path = tmp_path / "config.toml"
+    assert config.verify_bench_config_loaded(key="cfg").status == "FAIL"
+    ctx.config = MagicMock()
     result = config.verify_bench_config_loaded(key="cfg")
     assert result.status == "PASS"
 
@@ -293,7 +295,11 @@ def test_fd_count_zero_passes_and_unavailable_errors(ctx) -> None:
         assert proc.measure_fd_count(key="fd-zero", pid=1) == 0.0
     assert proc.verify_fd_count(key="fd-zero", maximum=0).status == "PASS"
     with patch("colosseum_host.api.proc.process_info", return_value=missing):
-        assert proc.measure_fd_count(key="fd-missing", pid=1) is None
+        with pytest.raises(RuntimeError, match="unavailable"):
+            proc.measure_fd_count(key="fd-missing", pid=1)
+    row = ctx.db.get_measurement("host", "proc.measure_fd_count", "fd-missing", row_index=0)
+    assert row is not None
+    assert row.status == "ERROR"
     unavailable = proc.verify_fd_count(key="fd-missing", maximum=0)
     assert unavailable.status == "ERROR"
     assert "unavailable" in unavailable.message

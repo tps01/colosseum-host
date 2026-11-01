@@ -21,7 +21,7 @@ the downloaded filename. For development, use `python -m pip install -e .`.
 python -m pip install "./colosseum_host-<version>-py3-none-any.whl"
 ```
 
-This requires `colosseum-core` `>=0.17.0,<0.18` and registers the `host` namespace
+This requires `colosseum-core` `>=0.18,<0.19` and registers the `host` namespace
 through the `colosseum.plugins` entry point.
 
 The default install always includes `pyserial` and `pyvisa` (packaging policy).
