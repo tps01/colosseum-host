@@ -28,6 +28,21 @@ def test_measure_python_version_records_host_domain(ctx) -> None:
     assert row.value
 
 
+def test_identity_measures_and_config_verify_run_under_dry_run(ctx) -> None:
+    from colosseum.decorators._common import DRY_RUN_ATTR
+
+    ctx.run_options.dry_run = True
+    assert getattr(system.measure_python_version, DRY_RUN_ATTR) == "call"
+    assert getattr(config.verify_bench_config_loaded, DRY_RUN_ATTR) == "call"
+    value = system.measure_python_version(key="py-dry")
+    assert isinstance(value, str) and value
+    row = ctx.db.get_measurement("host", "system.measure_python_version", "py-dry", row_index=0)
+    assert row is not None
+    assert row.value == value
+    ctx.config = MagicMock()
+    assert config.verify_bench_config_loaded(key="cfg-dry").status == "PASS"
+
+
 def test_verify_memory_minimum_pass_and_fail(ctx) -> None:
     system.measure_memory_available_mb(key="mem")
     pass_result = verify_minimum(

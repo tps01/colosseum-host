@@ -24,7 +24,7 @@ from colosseum_host.host.collectors import (
 _DOMAIN = "host"
 
 
-@measurement
+@measurement(dry_run="call")
 def measure_python_version(*, key: str) -> str:
     """Record the interpreter version string.
 
@@ -38,7 +38,7 @@ def measure_python_version(*, key: str) -> str:
     return common.python_version()
 
 
-@measurement
+@measurement(dry_run="call")
 def measure_platform(*, key: str) -> str:
     """Record ``platform.system()``.
 
@@ -52,7 +52,7 @@ def measure_platform(*, key: str) -> str:
     return common.platform_name()
 
 
-@measurement
+@measurement(dry_run="call")
 def measure_machine(*, key: str) -> str:
     """Record machine hardware type.
 
@@ -66,7 +66,7 @@ def measure_machine(*, key: str) -> str:
     return common.machine()
 
 
-@measurement
+@measurement(dry_run="call")
 def measure_hostname(*, key: str) -> str:
     """Record network hostname.
 
@@ -80,7 +80,7 @@ def measure_hostname(*, key: str) -> str:
     return common.hostname()
 
 
-@measurement
+@measurement(dry_run="call")
 def measure_cpu_count(*, key: str) -> float:
     """Record logical CPU count.
 
@@ -94,7 +94,7 @@ def measure_cpu_count(*, key: str) -> float:
     return common.cpu_count()
 
 
-@measurement
+@measurement(dry_run="call")
 def measure_cpu_model(*, key: str) -> str:
     """Record best-effort CPU model string.
 
@@ -108,7 +108,7 @@ def measure_cpu_model(*, key: str) -> str:
     return common.cpu_model() or ""
 
 
-@measurement
+@measurement(dry_run="call")
 def measure_uname(*, key: str) -> str:
     """Record a uname-style kernel/OS identity string.
 
@@ -122,7 +122,7 @@ def measure_uname(*, key: str) -> str:
     return uname_string()
 
 
-@measurement
+@measurement(dry_run="call")
 def measure_kernel_release(*, key: str) -> str:
     """Record the kernel release string.
 
