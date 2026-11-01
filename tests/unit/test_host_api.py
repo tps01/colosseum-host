@@ -309,9 +309,11 @@ def test_fd_count_zero_passes_and_unavailable_errors(ctx) -> None:
     with patch("colosseum_host.api.proc.process_info", return_value=zero):
         assert proc.measure_fd_count(key="fd-zero", pid=1) == 0.0
     assert proc.verify_fd_count(key="fd-zero", maximum=0).status == "PASS"
-    with patch("colosseum_host.api.proc.process_info", return_value=missing):
-        with pytest.raises(RuntimeError, match="unavailable"):
-            proc.measure_fd_count(key="fd-missing", pid=1)
+    with (
+        patch("colosseum_host.api.proc.process_info", return_value=missing),
+        pytest.raises(RuntimeError, match="unavailable"),
+    ):
+        proc.measure_fd_count(key="fd-missing", pid=1)
     row = ctx.db.get_measurement("host", "proc.measure_fd_count", "fd-missing", row_index=0)
     assert row is not None
     assert row.status == "ERROR"
