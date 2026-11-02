@@ -2,9 +2,9 @@
 
 ## Documentation
 
-API reference (GitHub Pages): https://tps01.github.io/colosseum-host/
+API reference (GitHub Pages): <https://tps01.github.io/colosseum-host/>
 
-Framework hub: https://tps01.github.io/colosseum-core/
+Framework hub: <https://tps01.github.io/colosseum-core/>
 
 The Host plugin provides local system information and telemetry on supported
 platforms through `col.host.*`. Host APIs inspect the machine running the
@@ -15,7 +15,8 @@ remote execution mechanism such as Messaging SSH.
 
 Download the wheel from [GitHub Releases](https://github.com/tps01/colosseum-host/releases)
 and install it in the same environment as core. Replace `<version>` with
-the downloaded filename. For development, use `python -m pip install -e .`.
+the downloaded filename. For development, use
+`python -m pip install -r requirements.txt`.
 
 ```bash
 python -m pip install "./colosseum_host-<version>-py3-none-any.whl"
@@ -141,7 +142,7 @@ for summaries, evidence queries, and opt-in reports.
 
 ```bash
 pip install -e ../colosseum-core
-pip install -e .
+pip install -r requirements.txt
 python -m pytest
 ruff check colosseum_host tests examples
 mypy

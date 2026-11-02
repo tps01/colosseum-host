@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from colosseum_host.host.network.types import AdapterSnapshot, IPv4Endpoint
 from colosseum_host.host.network_bindings import IPv4NetworkBinding
-from colosseum_host.host.network_bindings import windows as win_bindings
+from colosseum_host.host.network_bindings import bindings as binding_dispatch
 
 
 def test_binding_as_dict() -> None:
@@ -19,7 +19,43 @@ def test_binding_as_dict() -> None:
     }
 
 
-def test_windows_binding_keeps_prefix_zero_and_skips_missing_prefix() -> None:
+def test_dispatcher_filters_loopback_unless_requested() -> None:
+    adapters = [
+        AdapterSnapshot(
+            name="lo",
+            mac=None,
+            ipv4=(IPv4Endpoint("127.0.0.1", 8),),
+            ipv6=(),
+            operstate="up",
+            mtu=65536,
+            is_loopback=True,
+        ),
+        AdapterSnapshot(
+            name="eth0",
+            mac=None,
+            ipv4=(IPv4Endpoint("192.168.1.10", 24),),
+            ipv6=(),
+            operstate="up",
+            mtu=1500,
+            is_loopback=False,
+        ),
+    ]
+    with (
+        patch.object(binding_dispatch.sys, "platform", "win32"),
+        patch.object(binding_dispatch, "list_adapters", return_value=adapters),
+    ):
+        filtered = binding_dispatch.list_ipv4_network_bindings()
+        with_loopback = binding_dispatch.list_ipv4_network_bindings(include_loopback=True)
+    assert [item.address for item in filtered] == ["192.168.1.10"]
+    assert [item.address for item in with_loopback] == ["127.0.0.1", "192.168.1.10"]
+
+
+def test_dispatcher_returns_empty_on_unsupported_platform() -> None:
+    with patch.object(binding_dispatch.sys, "platform", "darwin"):
+        assert binding_dispatch.list_ipv4_network_bindings() == []
+
+
+def test_binding_keeps_prefix_zero_and_skips_missing_prefix() -> None:
     adapters = [
         AdapterSnapshot(
             name="eth0",
@@ -35,8 +71,11 @@ def test_windows_binding_keeps_prefix_zero_and_skips_missing_prefix() -> None:
             is_loopback=False,
         ),
     ]
-    with patch.object(win_bindings, "list_adapters", return_value=adapters):
-        bindings = win_bindings.list_ipv4_network_bindings()
+    with (
+        patch.object(binding_dispatch.sys, "platform", "win32"),
+        patch.object(binding_dispatch, "list_adapters", return_value=adapters),
+    ):
+        bindings = binding_dispatch.list_ipv4_network_bindings()
     assert [(item.address, item.network, item.prefix) for item in bindings] == [
         ("10.1.2.3", "0.0.0.0", 0),
         ("192.168.1.10", "192.168.1.0", 24),

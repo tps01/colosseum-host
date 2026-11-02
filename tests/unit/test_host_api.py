@@ -195,13 +195,59 @@ def test_measure_rss_mb(ctx) -> None:
 
 def test_verify_maximum_helper(ctx) -> None:
     system.measure_memory_available_mb(key="mem")
-    result = verify_maximum(
+    assert (
+        verify_maximum(
+            domain="host",
+            command="system.measure_memory_available_mb",
+            key="mem",
+            maximum=1e12,
+        ).status
+        == "PASS"
+    )
+    fail = verify_maximum(
         domain="host",
         command="system.measure_memory_available_mb",
         key="mem",
-        maximum=1e12,
+        maximum=-1.0,
+        unit="MB",
     )
-    assert result.status == "PASS"
+    assert fail.status == "FAIL"
+    assert "expected <= -1.0 MB" in fail.message
+
+
+def test_verify_helpers_missing_measurement_and_optional(ctx) -> None:
+    missing = verify_minimum(
+        domain="host",
+        command="system.measure_memory_available_mb",
+        key="missing-key",
+        minimum=1.0,
+    )
+    assert missing.status == "ERROR"
+    assert missing.optional is False
+    assert "no measurement" in missing.message.lower() or "measurement" in missing.message.lower()
+
+    optional_missing = verify_maximum(
+        domain="host",
+        command="system.measure_memory_available_mb",
+        key="also-missing",
+        maximum=1.0,
+        optional=True,
+    )
+    assert optional_missing.status == "ERROR"
+    assert optional_missing.optional is True
+
+    null_row = MagicMock()
+    null_row.value = None
+    with patch.object(ctx.db, "get_measurement", return_value=null_row):
+        null_value = verify_minimum(
+            domain="host",
+            command="system.measure_memory_available_mb",
+            key="mem",
+            minimum=1.0,
+            optional=True,
+        )
+    assert null_value.status == "ERROR"
+    assert null_value.optional is True
 
 
 def test_measure_vmstat_and_oom_verify(ctx) -> None:
