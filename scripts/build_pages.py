@@ -141,6 +141,7 @@ def _document_controls(app, what, name, obj, options, lines):
     controls = {{
         "optional": "False by default. True excludes unsuccessful outcomes from the aggregate result; commands and measurements also suppress operation exceptions. A failed optional measurement returns None.",
         "description": "Verification label in summaries and reports; omitted or blank uses the evidence key.",
+        "requirements": "Requirement identifiers attached to this verification. A comma-separated string or a list; omitted attaches none.",
     }}
     for parameter, description in controls.items():
         if parameter in inspect.signature(obj).parameters and f":param {{parameter}}:" not in documented:
