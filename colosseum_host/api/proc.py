@@ -48,6 +48,7 @@ def measure_info(
     :returns: Process info dictionary.
     :rtype: dict[str, Any]
     """
+    _logger.info("Sampling process info for pid %s comm %s", pid, comm)
     _ = key
     return process_info(_resolve_pid(pid=pid, comm=comm)).as_dict()
 
@@ -71,6 +72,7 @@ def measure_rss_mb(
     :returns: RSS in megabytes.
     :rtype: float
     """
+    _logger.info("Sampling process RSS for pid %s comm %s", pid, comm)
     _ = key
     return process_info(_resolve_pid(pid=pid, comm=comm)).rss_mb
 
@@ -94,6 +96,7 @@ def measure_threads(
     :returns: Thread count as float.
     :rtype: float
     """
+    _logger.info("Sampling process thread count for pid %s comm %s", pid, comm)
     _ = key
     return float(process_info(_resolve_pid(pid=pid, comm=comm)).threads)
 
@@ -123,6 +126,7 @@ def measure_fd_count(
 
     :raises RuntimeError: When the FD count cannot be read.
     """
+    _logger.info("Sampling process file descriptors for pid %s comm %s", pid, comm)
     _ = key
     count = process_info(_resolve_pid(pid=pid, comm=comm)).fd_count
     if count is None:
@@ -142,6 +146,7 @@ def measure_pids_by_comm(*, key: str, comm: str) -> list[int]:
     :returns: Sorted list of matching pids.
     :rtype: list[int]
     """
+    _logger.info("Sampling process ids for comm %s", comm)
     _ = key
     return find_pids_by_comm(comm)
 
@@ -176,6 +181,7 @@ def verify_fd_count(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking process file descriptors are at most %s", maximum)
     from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 

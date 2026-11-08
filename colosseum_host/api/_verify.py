@@ -12,6 +12,9 @@ from colosseum.decorators import (
     verification,
 )
 from colosseum.decorators._common import command_id_for_module
+from colosseum.logging import get_logger
+
+_logger = get_logger("colosseum.host")
 
 
 def verify_minimum(
@@ -61,6 +64,7 @@ def minimum_verifier(
         minimum: float | None = None,
         optional: bool = False,
     ) -> VerificationResult:
+        _logger.info("Checking host prerequisite %s is at least %s", name, minimum)
         resolved = minimum
         if resolved is None and profile_key is not None:
             from colosseum_host.api.config import profile_default
@@ -152,6 +156,7 @@ def maximum_verifier(
         maximum: float,
         optional: bool = False,
     ) -> VerificationResult:
+        _logger.info("Checking host prerequisite %s is at most %s", name, maximum)
         return verify_maximum(
             domain=domain,
             command=source_command,

@@ -8,8 +8,11 @@ from time import monotonic
 
 import cv2
 from colosseum.decorators import command
+from colosseum.logging import get_logger
 
 from colosseum_host._paths import resolve_artifact_path
+
+_logger = get_logger("colosseum.host")
 
 
 class _Recording:
@@ -76,6 +79,7 @@ def take_picture(*, path: str = "camera.jpg", device: int = 0) -> str:
     :raises ValueError: Unsupported suffix or the selected camera is recording.
     :raises RuntimeError: Camera open/read or image write failed.
     """
+    _logger.info("Capturing camera frame from %s", device)
     with _lock:
         if device in _recordings:
             raise ValueError(f"Camera {device} is recording")
@@ -113,6 +117,7 @@ def start_recording(*, path: str = "camera.avi", device: int = 0, fps: float = 3
     :raises ValueError: Invalid frame rate/suffix, device already recording, or output path in use.
     :raises RuntimeError: Camera or video writer could not open.
     """
+    _logger.info("Starting camera recording on device %s at %s fps", device, fps)
     if not math.isfinite(fps) or fps <= 0:
         raise ValueError("fps must be finite and positive")
     with _lock:
@@ -138,6 +143,7 @@ def stop_recording(*, device: int = 0) -> str:
 
     A blocked camera read can delay this call. Use it in finally before endex.
     """
+    _logger.info("Stopping camera recording on device %s", device)
     with _lock:
         recording = _recordings.pop(device, None)
         if recording is None:

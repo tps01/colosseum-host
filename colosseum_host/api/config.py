@@ -77,6 +77,7 @@ def capture_host_profile(*, path: str = "host_profile.json", disk_path: str | No
     :returns: Resolved artifact path string.
     :rtype: str
     """
+    _logger.info("Capturing host profile to %s", path)
     artifact_path = resolve_artifact_path(path)
     resolved_disk = disk_path
     if resolved_disk is None:
@@ -104,6 +105,7 @@ def verify_bench_config_loaded(*, key: str, optional: bool = False) -> Verificat
     :returns: VerificationResult with PASS or FAIL status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking bench prerequisite %s", "loaded config")
     _ = key
     from colosseum.context import get_context
 
