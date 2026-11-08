@@ -348,6 +348,12 @@ def capture(
     verify_cpu_max_percent/verify_rss_delta_mb using the capture key.
     See the telemetry workflow and platform matrix.
     """
+    _logger.info(
+        "Sampling host metrics %s every %s s for %s s",
+        tuple(metrics),
+        interval_s,
+        duration_s,
+    )
     artifact_path = resolve_artifact_path(path if path is not None else f"host_sample_{key}.csv")
     _logger.debug(
         "Host sample capture key=%s metrics=%s interval_s=%s duration_s=%s path=%s",
@@ -397,6 +403,7 @@ def measure_summary(*, key: str, metric: str, summary: dict[str, float]) -> dict
     :returns: Summary mapping including ``metric``.
     :rtype: dict[str, Any]
     """
+    _logger.info("Recording host sample summary for %s", metric)
     _ = key
     payload: dict[str, Any] = dict(summary)
     payload["metric"] = metric
@@ -463,6 +470,7 @@ def verify_delta_max(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking sample delta for %s is at most %s", key, maximum)
     return _check_summary_bound(key=key, field="delta", maximum=maximum, optional=optional)
 
 
@@ -485,6 +493,7 @@ def verify_max(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking sample maximum for %s is at most %s", key, maximum)
     return _check_summary_bound(key=key, field="max", maximum=maximum, optional=optional)
 
 
@@ -507,6 +516,7 @@ def verify_rss_delta_mb(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking sample RSS delta for %s is at most %s MB", key, maximum)
     return _check_summary_bound(
         key=f"{key}.proc.rss_mb", field="delta", maximum=maximum, optional=optional,
     )
@@ -531,6 +541,7 @@ def verify_temp_max_c(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking sample temperature for %s is at most %s C", key, maximum)
     return _check_summary_bound(
         key=f"{key}.temp_c", field="max", maximum=maximum, optional=optional,
     )
@@ -555,6 +566,7 @@ def verify_cpu_max_percent(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking sample CPU for %s is at most %s percent", key, maximum)
     return _check_summary_bound(
         key=f"{key}.cpu_percent", field="max", maximum=maximum, optional=optional,
     )

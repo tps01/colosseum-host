@@ -27,6 +27,7 @@ def measure_bindings(*, key: str, include_loopback: bool = False) -> list[dict[s
     :returns: List of binding dicts with ``interface``, ``address``, ``network``, ``prefix``.
     :rtype: list[dict[str, str | int]]
     """
+    _logger.info("Sampling host IPv4 bindings")
     _ = key
     bindings = [
         binding.as_dict()
@@ -55,6 +56,7 @@ def measure_interfaces(*, key: str, include_loopback: bool = False) -> list[dict
     :returns: List of interface dictionaries (name, MAC, IPs, and counters on Linux).
     :rtype: list[dict[str, Any]]
     """
+    _logger.info("Sampling host network interfaces")
     _ = key
     return [
         iface.as_dict()
@@ -78,6 +80,7 @@ def measure_interface(*, key: str, iface: str) -> dict[str, Any]:
     :returns: Interface dictionary.
     :rtype: dict[str, Any]
     """
+    _logger.info("Sampling network interface %s", iface)
     _ = key
     include_counters = not sys.platform.startswith("win")
     return network_interface(iface, include_counters=include_counters).as_dict()
@@ -95,6 +98,7 @@ def measure_mac(*, key: str, iface: str) -> str:
     :returns: MAC address string, or empty string if unavailable.
     :rtype: str
     """
+    _logger.info("Sampling MAC address for %s", iface)
     _ = key
     return network_interface(iface, include_counters=False).mac or ""
 
@@ -111,6 +115,7 @@ def measure_ipv4(*, key: str, iface: str) -> list[str]:
     :returns: List of IPv4 address strings.
     :rtype: list[str]
     """
+    _logger.info("Sampling IPv4 addresses for %s", iface)
     _ = key
     return list(network_interface(iface, include_counters=False).ipv4 or [])
 
@@ -127,6 +132,7 @@ def measure_ipv6(*, key: str, iface: str) -> list[str]:
     :returns: List of IPv6 address strings.
     :rtype: list[str]
     """
+    _logger.info("Sampling IPv6 addresses for %s", iface)
     _ = key
     return list(network_interface(iface, include_counters=False).ipv6 or [])
 
@@ -143,6 +149,7 @@ def measure_operstate(*, key: str, iface: str) -> str:
     :returns: Operstate string (for example ``up`` / ``down``), or empty.
     :rtype: str
     """
+    _logger.info("Sampling operstate for %s", iface)
     _ = key
     return network_interface(iface, include_counters=False).operstate or ""
 
@@ -164,6 +171,7 @@ def measure_counters(*, key: str, iface: str) -> dict[str, int | None]:
         counter unset on an unsupported platform.
     :rtype: dict[str, int | None]
     """
+    _logger.info("Sampling counters for %s", iface)
     _ = key
     data = network_interface(iface, include_counters=True).as_dict()
     return {
@@ -199,6 +207,7 @@ def measure_rates(*, key: str, iface: str, interval_s: float = 0.2) -> dict[str,
     :returns: Rate mapping including error/drop totals at end of interval.
     :rtype: dict[str, Any]
     """
+    _logger.info("Sampling network rates for %s", iface)
     _ = key
     return net_rates(iface=iface, interval_s=interval_s).as_dict()
 
@@ -219,6 +228,7 @@ def verify_operstate_up(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking network operstate for %s is up", key)
     from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 
@@ -255,6 +265,7 @@ def verify_rx_errors(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking network receive errors for %s are at most %s", key, maximum)
     from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 

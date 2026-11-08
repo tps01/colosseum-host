@@ -25,6 +25,7 @@ def measure_visa_backend(*, key: str) -> str:
     :returns: VISA backend identifier, or empty string if no backend can be opened.
     :rtype: str
     """
+    _logger.info("Sampling VISA backend")
     _ = key
     try:
         rm = pyvisa.ResourceManager()
@@ -49,6 +50,7 @@ def measure_serial_ports(*, key: str) -> str:
     :returns: Comma-separated port names (platform-specific).
     :rtype: str
     """
+    _logger.info("Sampling host serial ports")
     _ = key
     return serial_ports_csv()
 
@@ -72,6 +74,7 @@ def verify_visa_available(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking prerequisite %s", "VISA backend")
     from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 
