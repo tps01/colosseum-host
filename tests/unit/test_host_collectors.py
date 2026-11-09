@@ -378,3 +378,17 @@ def test_windows_adapter_enumeration_failure_is_not_an_empty_inventory() -> None
     with pytest.raises(OSError, match="GetAdaptersAddresses failed"):
         _adapters_from(adapter, result=87)
     assert _adapters_from(adapter, result=win_network._ERROR_NO_DATA) == []
+
+
+def test_meminfo_ignores_overflowing_memory_rows() -> None:
+    huge = "9" * 320
+    text = f"MemTotal: 1024 kB\nMemAvailable: 512 kB\nMemTotal: {huge} kB\n"
+    with patch.object(linux, "_read_text", return_value=text):
+        info = linux.meminfo()
+    assert info.total_mb == 1.0
+    assert info.available_mb == 0.5
+    with (
+        patch.object(linux, "_read_text", return_value=f"MemTotal: {huge} kB\n"),
+        pytest.raises(OSError, match="MemTotal/MemAvailable"),
+    ):
+        linux.meminfo()

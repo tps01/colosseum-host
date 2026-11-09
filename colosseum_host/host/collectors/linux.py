@@ -55,7 +55,7 @@ def meminfo() -> MemInfo:
         key = parts[0].rstrip(":")
         try:
             fields[key] = int(parts[1]) / 1024.0
-        except ValueError:
+        except (ValueError, OverflowError):
             continue
     if "MemTotal" not in fields or "MemAvailable" not in fields:
         raise OSError("MemTotal/MemAvailable not found in /proc/meminfo")
