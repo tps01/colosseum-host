@@ -5,7 +5,7 @@ from __future__ import annotations
 import platform
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from colosseum_host.host.network import list_adapters
 from colosseum_host.host.network.linux import iface_ipv4_endpoints, iface_ipv6, iface_names
@@ -178,8 +178,8 @@ _STATUS_EXTRACTORS: dict[str, tuple[str, Callable[[str], object]]] = {
 }
 
 
-def _parse_status_fields(text: str) -> dict[str, object]:
-    fields: dict[str, object] = {"name": "", "threads": 0}
+def _parse_status_fields(text: str) -> dict[str, str | int | float]:
+    fields: dict[str, str | int | float] = {"name": "", "threads": 0}
     for line in text.splitlines():
         key, sep, rest = line.partition(":")
         if not sep:
@@ -188,7 +188,7 @@ def _parse_status_fields(text: str) -> dict[str, object]:
         if entry is None:
             continue
         field_name, extractor = entry
-        fields[field_name] = extractor(rest)
+        fields[field_name] = cast("str | int | float", extractor(rest))
     return fields
 
 
