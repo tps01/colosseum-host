@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "colosseum-host"
-version = "0.6.4"
+version = "0.6.5"
 description = "Colosseum host prerequisites and local telemetry plugin"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -37,10 +37,16 @@ line-length = 100
 src = ["colosseum_host"]
 
 [tool.ruff.lint]
-select = ["A", "BLE", "FBT", "N", "COM", "C4", "ISC", "ICN", "TID", "TCH", "E", "F", "W", "I", "B", "UP", "ANN", "ARG", "SIM", "RET", "PTH"]
+preview = true
+explicit-preview-rules = true
+select = ["A", "BLE", "FBT", "N", "COM", "C4", "C901", "ISC", "ICN", "TID", "TCH", "E", "F", "W", "I", "B", "UP", "ANN", "ARG", "SIM", "RET", "PTH", "PLR1702", "PLR0914", "PLR0915", "PLR0912"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["ANN", "ARG"]
+"tests/**" = ["ANN", "ARG", "C901", "PLR0912", "PLR0914", "PLR0915", "PLR1702"]
+"scripts/**" = ["C901", "PLR0912", "PLR0914", "PLR0915", "PLR1702"]
 "colosseum_host/host/collectors/windows.py" = ["N801"]
 "colosseum_host/host/network/windows.py" = ["N801"]
 

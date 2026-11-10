@@ -120,12 +120,40 @@ def _adapter_name(adapter: _IP_ADAPTER_ADDRESSES) -> str:
     return str(name)
 
 
-def list_adapters(*, include_loopback: bool = False) -> list[AdapterSnapshot]:
-    """Enumerate adapters once; both collectors and bindings project from this.
+def _dispatch_unicast_endpoint(
+    addr_struct: _IP_ADAPTER_UNICAST_ADDRESS,
+    *,
+    ipv4: list[IPv4Endpoint],
+    ipv6: list[str],
+) -> None:
+    sa = addr_struct.Address
+    if sa.iSockaddrLength < 16 or not sa.lpSockaddr:
+        return
+    sockaddr = (ctypes.c_ubyte * sa.iSockaddrLength).from_address(int(sa.lpSockaddr))
+    family_value = int.from_bytes(sockaddr[0:2], "little")
+    if family_value == socket.AF_INET and sa.iSockaddrLength >= 16:
+        address = socket.inet_ntoa(bytes(sockaddr[4:8]))
+        ipv4.append(IPv4Endpoint(address=address, prefix=_ipv4_prefix(addr_struct)))
+    elif family_value == socket.AF_INET6 and sa.iSockaddrLength >= 28:
+        with contextlib.suppress(OSError):
+            ipv6.append(socket.inet_ntop(socket.AF_INET6, bytes(sockaddr[8:24])))
 
-    A successful call with no adapters returns an empty list. Enumeration
-    failures raise instead of looking like that empty inventory.
-    """
+
+def _iter_unicast_endpoints(
+    adapter: _IP_ADAPTER_ADDRESSES,
+) -> tuple[list[IPv4Endpoint], list[str]]:
+    ipv4: list[IPv4Endpoint] = []
+    ipv6: list[str] = []
+    unicast_ptr = _pointer_value(adapter.FirstUnicastAddress)
+    while unicast_ptr:
+        addr_struct = _IP_ADAPTER_UNICAST_ADDRESS.from_address(unicast_ptr)
+        _dispatch_unicast_endpoint(addr_struct, ipv4=ipv4, ipv6=ipv6)
+        unicast_ptr = _pointer_value(addr_struct.Next)
+    return ipv4, ipv6
+
+
+def _fetch_adapters_buffer() -> ctypes.Array[ctypes.c_char] | None:
+    """Return a filled GetAdaptersAddresses buffer, or None when there is no data."""
     size = wintypes.ULONG(15000)
     buffer = ctypes.create_string_buffer(size.value)
     flags = 0
@@ -147,54 +175,42 @@ def list_adapters(*, include_loopback: bool = False) -> list[AdapterSnapshot]:
             ctypes.byref(size),
         )
     if result == _ERROR_NO_DATA:
-        return []
+        return None
     if result != 0:
         raise OSError(f"GetAdaptersAddresses failed with Win32 error {result}")
+    return buffer
+
+
+def list_adapters(*, include_loopback: bool = False) -> list[AdapterSnapshot]:
+    """Enumerate adapters once; both collectors and bindings project from this.
+
+    A successful call with no adapters returns an empty list. Enumeration
+    failures raise instead of looking like that empty inventory.
+    """
+    buffer = _fetch_adapters_buffer()
+    if buffer is None:
+        return []
 
     adapters: list[AdapterSnapshot] = []
     adapter = _IP_ADAPTER_ADDRESSES.from_buffer(buffer)
     while True:
         is_loopback = adapter.IfType == 24
-        if is_loopback and not include_loopback:
-            next_adapter = adapter.Next
-            if not next_adapter:
-                break
-            adapter = next_adapter.contents
-            continue
-
-        ipv4: list[IPv4Endpoint] = []
-        ipv6: list[str] = []
-        unicast_ptr = _pointer_value(adapter.FirstUnicastAddress)
-        while unicast_ptr:
-            addr_struct = _IP_ADAPTER_UNICAST_ADDRESS.from_address(unicast_ptr)
-            sa = addr_struct.Address
-            if sa.iSockaddrLength >= 16 and sa.lpSockaddr:
-                sockaddr = (ctypes.c_ubyte * sa.iSockaddrLength).from_address(
-                    int(sa.lpSockaddr),
-                )
-                family_value = int.from_bytes(sockaddr[0:2], "little")
-                if family_value == socket.AF_INET and sa.iSockaddrLength >= 16:
-                    address = socket.inet_ntoa(bytes(sockaddr[4:8]))
-                    ipv4.append(IPv4Endpoint(address=address, prefix=_ipv4_prefix(addr_struct)))
-                elif family_value == socket.AF_INET6 and sa.iSockaddrLength >= 28:
-                    with contextlib.suppress(OSError):
-                        ipv6.append(socket.inet_ntop(socket.AF_INET6, bytes(sockaddr[8:24])))
-            unicast_ptr = _pointer_value(addr_struct.Next)
-
-        adapters.append(
-            AdapterSnapshot(
-                name=_adapter_name(adapter),
-                mac=_format_mac(
-                    bytes(adapter.PhysicalAddress),
-                    int(adapter.PhysicalAddressLength),
+        if not (is_loopback and not include_loopback):
+            ipv4, ipv6 = _iter_unicast_endpoints(adapter)
+            adapters.append(
+                AdapterSnapshot(
+                    name=_adapter_name(adapter),
+                    mac=_format_mac(
+                        bytes(adapter.PhysicalAddress),
+                        int(adapter.PhysicalAddressLength),
+                    ),
+                    ipv4=tuple(ipv4),
+                    ipv6=tuple(ipv6),
+                    operstate=_IF_OPER_STATUS.get(int(adapter.OperStatus)),
+                    mtu=int(adapter.Mtu) if adapter.Mtu else None,
+                    is_loopback=is_loopback,
                 ),
-                ipv4=tuple(ipv4),
-                ipv6=tuple(ipv6),
-                operstate=_IF_OPER_STATUS.get(int(adapter.OperStatus)),
-                mtu=int(adapter.Mtu) if adapter.Mtu else None,
-                is_loopback=is_loopback,
-            ),
-        )
+            )
         next_adapter = adapter.Next
         if not next_adapter:
             break
