@@ -378,7 +378,7 @@ def verify_python_version(
             resolved = str(profile_value)
     if resolved is None:
         raise TypeError(
-            "verify_python_version requires version_prefix= or " "[host.profile].python_version_prefix",
+            "verify_python_version requires version_prefix= or [host.profile].python_version_prefix",
         )
 
     row = get_context().db.get_measurement(

@@ -32,7 +32,7 @@ def _kernel32() -> Any:  # noqa: ANN401
 
 def _linux_only(feature: str) -> HostCapabilityError:
     return HostCapabilityError(
-        f"{feature} is only available on Linux " "(see README Linux-first capability table)",
+        f"{feature} is only available on Linux (see README Linux-first capability table)",
     )
 
 
