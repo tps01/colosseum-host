@@ -308,7 +308,10 @@ def test_sample_capture_writes_csv_and_summaries(ctx, tmp_path) -> None:
     assert "elapsed_s,metric,value" in text
     assert "memory_available_mb" in text
     summary = ctx.db.get_measurement(
-        "host", "sample.measure_summary", "stress.memory_available_mb", row_index=0,
+        "host",
+        "sample.measure_summary",
+        "stress.memory_available_mb",
+        row_index=0,
     )
     assert summary is not None
     assert summary.value["delta"] == -20.0
@@ -470,7 +473,10 @@ def test_read_rate_family_disk_uses_delayed_wakeup() -> None:
     ):
         seen["interval_s"] = interval_s
         return linux.disk_rates_from_samples(
-            first, second, device=device, interval_s=interval_s,
+            first,
+            second,
+            device=device,
+            interval_s=interval_s,
         )
 
     with (

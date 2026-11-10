@@ -46,6 +46,7 @@ _MetricFn = Callable[[dict[str, Any]], Optional[float]]
 class _CsvWriter(Protocol):
     def writerow(self, row: Sequence[object]) -> object: ...
 
+
 _GAUGE_METRICS = frozenset(
     {
         "memory_available_mb",
@@ -108,21 +109,23 @@ _METRIC_READERS: dict[str, _MetricFn] = {
     "proc.threads": lambda kw: float(process_info(_require_pid(kw)).threads),
     "proc.fd_count": _proc_fd_count,
     "net.rx_bps": lambda kw: net_rates(
-        iface=_require_iface(kw), interval_s=float(kw.get("net_interval_s", 0.1)),
+        iface=_require_iface(kw),
+        interval_s=float(kw.get("net_interval_s", 0.1)),
     ).rx_bps,
     "net.tx_bps": lambda kw: net_rates(
-        iface=_require_iface(kw), interval_s=float(kw.get("net_interval_s", 0.1)),
+        iface=_require_iface(kw),
+        interval_s=float(kw.get("net_interval_s", 0.1)),
     ).tx_bps,
     "disk.read_bps": lambda kw: disk_rates(
-        device=_require_device(kw), interval_s=float(kw.get("disk_interval_s", 0.1)),
+        device=_require_device(kw),
+        interval_s=float(kw.get("disk_interval_s", 0.1)),
     ).read_bps,
     "disk.write_bps": lambda kw: disk_rates(
-        device=_require_device(kw), interval_s=float(kw.get("disk_interval_s", 0.1)),
+        device=_require_device(kw),
+        interval_s=float(kw.get("disk_interval_s", 0.1)),
     ).write_bps,
     "vm.pgfault": lambda _kw: float(vmstat().pgfault),
-    "vm.oom_kill": lambda _kw: (
-        None if (oom := vmstat().oom_kill) is None else float(oom)
-    ),
+    "vm.oom_kill": lambda _kw: (None if (oom := vmstat().oom_kill) is None else float(oom)),
 }
 
 
@@ -318,11 +321,7 @@ def _record_tick(
 def _series_summaries(
     series: dict[str, list[float | None]],
 ) -> dict[str, dict[str, float]]:
-    return {
-        name: summary
-        for name, values in series.items()
-        if (summary := _summarize(values)) is not None
-    }
+    return {name: summary for name, values in series.items() if (summary := _summarize(values)) is not None}
 
 
 def _run_sampler(
@@ -524,7 +523,10 @@ def _check_summary_bound(
     from colosseum.decorators import missing_measurement_result
 
     row = get_context().db.get_measurement(
-        _DOMAIN, "sample.measure_summary", key, row_index=0,
+        _DOMAIN,
+        "sample.measure_summary",
+        key,
+        row_index=0,
     )
     if row is None or row.value is None:
         return missing_measurement_result(key=key, optional=optional)
@@ -615,7 +617,10 @@ def verify_rss_delta_mb(
     """
     _logger.info("Checking sample RSS delta for %s is at most %s MB", key, maximum)
     return _check_summary_bound(
-        key=f"{key}.proc.rss_mb", field="delta", maximum=maximum, optional=optional,
+        key=f"{key}.proc.rss_mb",
+        field="delta",
+        maximum=maximum,
+        optional=optional,
     )
 
 
@@ -640,7 +645,10 @@ def verify_temp_max_c(
     """
     _logger.info("Checking sample temperature for %s is at most %s C", key, maximum)
     return _check_summary_bound(
-        key=f"{key}.temp_c", field="max", maximum=maximum, optional=optional,
+        key=f"{key}.temp_c",
+        field="max",
+        maximum=maximum,
+        optional=optional,
     )
 
 
@@ -665,5 +673,8 @@ def verify_cpu_max_percent(
     """
     _logger.info("Checking sample CPU for %s is at most %s percent", key, maximum)
     return _check_summary_bound(
-        key=f"{key}.cpu_percent", field="max", maximum=maximum, optional=optional,
+        key=f"{key}.cpu_percent",
+        field="max",
+        maximum=maximum,
+        optional=optional,
     )
