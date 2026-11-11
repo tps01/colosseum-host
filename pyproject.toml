@@ -31,9 +31,13 @@ colosseum_host = ["py.typed"]
 [tool.pytest.ini_options]
 testpaths = ["tests/unit"]
 
+[tool.black]
+line-length = 120
+target-version = ["py39"]
+
 [tool.ruff]
 target-version = "py39"
-line-length = 100
+line-length = 120
 src = ["colosseum_host"]
 
 [tool.ruff.lint]

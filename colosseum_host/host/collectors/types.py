@@ -75,16 +75,7 @@ class CpuTimes:
 
     @property
     def total(self) -> float:
-        return (
-            self.user
-            + self.nice
-            + self.system
-            + self.idle
-            + self.iowait
-            + self.irq
-            + self.softirq
-            + self.steal
-        )
+        return self.user + self.nice + self.system + self.idle + self.iowait + self.irq + self.softirq + self.steal
 
     @property
     def busy(self) -> float:

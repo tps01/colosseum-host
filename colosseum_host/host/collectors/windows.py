@@ -32,8 +32,7 @@ def _kernel32() -> Any:  # noqa: ANN401
 
 def _linux_only(feature: str) -> HostCapabilityError:
     return HostCapabilityError(
-        f"{feature} is only available on Linux "
-        "(see README Linux-first capability table)",
+        f"{feature} is only available on Linux (see README Linux-first capability table)",
     )
 
 
@@ -81,9 +80,7 @@ def uptime_s() -> float:
 
 
 def serial_ports_csv() -> str:
-    names = sorted(
-        port.device for port in list_ports.comports() if port.device.upper().startswith("COM")
-    )
+    names = sorted(port.device for port in list_ports.comports() if port.device.upper().startswith("COM"))
     return ",".join(names)
 
 

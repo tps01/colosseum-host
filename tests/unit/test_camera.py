@@ -1,4 +1,5 @@
 """Camera lifecycle and failure propagation without physical hardware."""
+
 from contextlib import suppress
 from unittest.mock import MagicMock
 

@@ -29,10 +29,7 @@ def measure_bindings(*, key: str, include_loopback: bool = False) -> list[dict[s
     """
     _logger.info("Sampling host IPv4 bindings")
     _ = key
-    bindings = [
-        binding.as_dict()
-        for binding in list_ipv4_network_bindings(include_loopback=include_loopback)
-    ]
+    bindings = [binding.as_dict() for binding in list_ipv4_network_bindings(include_loopback=include_loopback)]
     _logger.debug(
         "IPv4 bindings count=%s include_loopback=%s",
         len(bindings),
@@ -58,10 +55,7 @@ def measure_interfaces(*, key: str, include_loopback: bool = False) -> list[dict
     """
     _logger.info("Sampling host network interfaces")
     _ = key
-    return [
-        iface.as_dict()
-        for iface in list_network_interfaces(include_loopback=include_loopback)
-    ]
+    return [iface.as_dict() for iface in list_network_interfaces(include_loopback=include_loopback)]
 
 
 @measurement

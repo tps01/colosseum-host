@@ -378,12 +378,14 @@ def verify_python_version(
             resolved = str(profile_value)
     if resolved is None:
         raise TypeError(
-            "verify_python_version requires version_prefix= or "
-            "[host.profile].python_version_prefix",
+            "verify_python_version requires version_prefix= or [host.profile].python_version_prefix",
         )
 
     row = get_context().db.get_measurement(
-        _DOMAIN, "system.measure_python_version", key, row_index=0,
+        _DOMAIN,
+        "system.measure_python_version",
+        key,
+        row_index=0,
     )
     if row is None or row.value is None:
         return missing_measurement_result(key=key, optional=optional)
