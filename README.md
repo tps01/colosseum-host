@@ -151,3 +151,5 @@ mypy
 See [telemetry workflows](https://tps01.github.io/colosseum-host/guides/telemetry_workflows.html)
 for a complete subprocess/PID recipe, interface discovery, rate windows and
 summary-key conventions.
+
+See [starter fuzz testing](tests/fuzz/README.md) for seed replay, optional Atheris runs, and manual coverage reports.

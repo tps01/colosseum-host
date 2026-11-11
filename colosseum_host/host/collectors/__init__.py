@@ -144,7 +144,10 @@ def disk_rates_from_samples(
     return cast(
         "DiskRates",
         platform_mod.disk_rates_from_samples(
-            first, second, device=device, interval_s=interval_s,
+            first,
+            second,
+            device=device,
+            interval_s=interval_s,
         ),
     )
 

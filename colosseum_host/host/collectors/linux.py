@@ -5,6 +5,7 @@ from __future__ import annotations
 import platform
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
 from colosseum_host.host.network import list_adapters
 from colosseum_host.host.network.linux import iface_ipv4_endpoints, iface_ipv6, iface_names
@@ -21,6 +22,9 @@ from .types import (
     ProcessInfo,
     VmStat,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _read_text(path: Path) -> str:
@@ -55,7 +59,7 @@ def meminfo() -> MemInfo:
         key = parts[0].rstrip(":")
         try:
             fields[key] = int(parts[1]) / 1024.0
-        except ValueError:
+        except (ValueError, OverflowError):
             continue
     if "MemTotal" not in fields or "MemAvailable" not in fields:
         raise OSError("MemTotal/MemAvailable not found in /proc/meminfo")
@@ -155,44 +159,71 @@ def list_network_interfaces(*, include_loopback: bool = False) -> list[NetworkIn
     return ifaces
 
 
-def process_info(pid: int) -> ProcessInfo:
-    status_path = Path(f"/proc/{pid}/status")
-    text = _read_text(status_path)
-    name = ""
-    rss_kb: float | None = None
-    threads = 0
+def _status_name(rest: str) -> str:
+    return rest.strip()
+
+
+def _status_vmrss_kb(rest: str) -> float:
+    return float(rest.split()[0])
+
+
+def _status_threads(rest: str) -> int:
+    return int(rest.split()[0])
+
+
+_STATUS_EXTRACTORS: dict[str, tuple[str, Callable[[str], object]]] = {
+    "Name": ("name", _status_name),
+    "VmRSS": ("rss_kb", _status_vmrss_kb),
+    "Threads": ("threads", _status_threads),
+}
+
+
+def _parse_status_fields(text: str) -> dict[str, str | int | float]:
+    fields: dict[str, str | int | float] = {"name": "", "threads": 0}
     for line in text.splitlines():
-        if line.startswith("Name:"):
-            name = line.split(":", 1)[1].strip()
-        elif line.startswith("VmRSS:"):
-            rss_kb = float(line.split()[1])
-        elif line.startswith("Threads:"):
-            threads = int(line.split()[1])
+        key, sep, rest = line.partition(":")
+        if not sep:
+            continue
+        entry = _STATUS_EXTRACTORS.get(key)
+        if entry is None:
+            continue
+        field_name, extractor = entry
+        fields[field_name] = cast("str | int | float", extractor(rest))
+    return fields
+
+
+def _fd_count(pid: int) -> int | None:
+    try:
+        return sum(1 for _ in Path(f"/proc/{pid}/fd").iterdir())
+    except OSError:
+        return None
+
+
+def _pss_mb(pid: int) -> float | None:
+    smaps = Path(f"/proc/{pid}/smaps_rollup")
+    if not smaps.is_file():
+        return None
+    try:
+        for line in _read_text(smaps).splitlines():
+            if line.startswith("Pss:"):
+                return float(line.split()[1]) / 1024.0
+    except OSError:
+        return None
+    return None
+
+
+def process_info(pid: int) -> ProcessInfo:
+    fields = _parse_status_fields(_read_text(Path(f"/proc/{pid}/status")))
+    rss_kb = fields.get("rss_kb")
     if rss_kb is None:
         raise OSError(f"VmRSS not found for pid {pid}")
-    fd_count: int | None = None
-    fd_dir = Path(f"/proc/{pid}/fd")
-    try:
-        fd_count = sum(1 for _ in fd_dir.iterdir())
-    except OSError:
-        fd_count = None
-    pss_mb: float | None = None
-    smaps = Path(f"/proc/{pid}/smaps_rollup")
-    if smaps.is_file():
-        try:
-            for line in _read_text(smaps).splitlines():
-                if line.startswith("Pss:"):
-                    pss_mb = float(line.split()[1]) / 1024.0
-                    break
-        except OSError:
-            pss_mb = None
     return ProcessInfo(
         pid=pid,
-        name=name,
-        rss_mb=rss_kb / 1024.0,
-        threads=threads,
-        fd_count=fd_count,
-        pss_mb=pss_mb,
+        name=str(fields["name"]),
+        rss_mb=float(rss_kb) / 1024.0,
+        threads=int(fields["threads"]),
+        fd_count=_fd_count(pid),
+        pss_mb=_pss_mb(pid),
     )
 
 

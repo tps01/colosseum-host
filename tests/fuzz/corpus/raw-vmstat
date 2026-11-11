@@ -1,0 +1,5 @@
+pgfault 10
+pgpgin -1
+pgpgout 20
+oom_kill 0
+pgfault invalid

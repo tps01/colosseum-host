@@ -12,6 +12,9 @@ from colosseum.decorators import (
     verification,
 )
 from colosseum.decorators._common import command_id_for_module
+from colosseum.logging import get_logger
+
+_logger = get_logger("colosseum.host")
 
 
 def verify_minimum(
@@ -48,12 +51,8 @@ def minimum_verifier(
 ) -> Callable[..., VerificationResult]:
     frame = inspect.currentframe()
     caller_frame = frame.f_back if frame is not None else None
-    caller_module = (
-        caller_frame.f_globals.get("__name__", __name__) if caller_frame is not None else __name__
-    )
-    source_command = (
-        command if "." in command else command_id_for_module(str(caller_module), command)
-    )
+    caller_module = caller_frame.f_globals.get("__name__", __name__) if caller_frame is not None else __name__
+    source_command = command if "." in command else command_id_for_module(str(caller_module), command)
 
     def verify(
         *,
@@ -61,6 +60,7 @@ def minimum_verifier(
         minimum: float | None = None,
         optional: bool = False,
     ) -> VerificationResult:
+        _logger.info("Checking host prerequisite %s is at least %s", name, minimum)
         resolved = minimum
         if resolved is None and profile_key is not None:
             from colosseum_host.api.config import profile_default
@@ -84,11 +84,7 @@ def minimum_verifier(
     verify.__name__ = name
     verify.__qualname__ = name
     verify.__module__ = str(caller_module)
-    profile_note = (
-        f" When omitted, defaults from ``[host.profile].{profile_key}``.\n"
-        if profile_key
-        else "\n"
-    )
+    profile_note = f" When omitted, defaults from ``[host.profile].{profile_key}``.\n" if profile_key else "\n"
     verify.__doc__ = (
         f"Require a prior ``{source_command}`` measurement to be at least a minimum value.\n\n"
         f":param key: Measurement key shared with the prior ``{source_command}`` call.\n"
@@ -139,12 +135,8 @@ def maximum_verifier(
 ) -> Callable[..., VerificationResult]:
     frame = inspect.currentframe()
     caller_frame = frame.f_back if frame is not None else None
-    caller_module = (
-        caller_frame.f_globals.get("__name__", __name__) if caller_frame is not None else __name__
-    )
-    source_command = (
-        command if "." in command else command_id_for_module(str(caller_module), command)
-    )
+    caller_module = caller_frame.f_globals.get("__name__", __name__) if caller_frame is not None else __name__
+    source_command = command if "." in command else command_id_for_module(str(caller_module), command)
 
     def verify(
         *,
@@ -152,6 +144,7 @@ def maximum_verifier(
         maximum: float,
         optional: bool = False,
     ) -> VerificationResult:
+        _logger.info("Checking host prerequisite %s is at most %s", name, maximum)
         return verify_maximum(
             domain=domain,
             command=source_command,

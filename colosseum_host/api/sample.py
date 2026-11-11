@@ -6,7 +6,7 @@ import csv
 import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Protocol
 
 from colosseum.decorators import (
     VerificationResult,
@@ -18,6 +18,7 @@ from colosseum.logging import get_logger
 
 from colosseum_host._paths import resolve_artifact_path
 from colosseum_host.host.collectors import (
+    CpuTimes,
     NetworkInterface,
     cpu_times,
     cpu_utilization,
@@ -40,6 +41,11 @@ _DOMAIN = "host"
 _logger = get_logger("colosseum.host")
 
 _MetricFn = Callable[[dict[str, Any]], Optional[float]]
+
+
+class _CsvWriter(Protocol):
+    def writerow(self, row: Sequence[object]) -> object: ...
+
 
 _GAUGE_METRICS = frozenset(
     {
@@ -103,21 +109,23 @@ _METRIC_READERS: dict[str, _MetricFn] = {
     "proc.threads": lambda kw: float(process_info(_require_pid(kw)).threads),
     "proc.fd_count": _proc_fd_count,
     "net.rx_bps": lambda kw: net_rates(
-        iface=_require_iface(kw), interval_s=float(kw.get("net_interval_s", 0.1)),
+        iface=_require_iface(kw),
+        interval_s=float(kw.get("net_interval_s", 0.1)),
     ).rx_bps,
     "net.tx_bps": lambda kw: net_rates(
-        iface=_require_iface(kw), interval_s=float(kw.get("net_interval_s", 0.1)),
+        iface=_require_iface(kw),
+        interval_s=float(kw.get("net_interval_s", 0.1)),
     ).tx_bps,
     "disk.read_bps": lambda kw: disk_rates(
-        device=_require_device(kw), interval_s=float(kw.get("disk_interval_s", 0.1)),
+        device=_require_device(kw),
+        interval_s=float(kw.get("disk_interval_s", 0.1)),
     ).read_bps,
     "disk.write_bps": lambda kw: disk_rates(
-        device=_require_device(kw), interval_s=float(kw.get("disk_interval_s", 0.1)),
+        device=_require_device(kw),
+        interval_s=float(kw.get("disk_interval_s", 0.1)),
     ).write_bps,
     "vm.pgfault": lambda _kw: float(vmstat().pgfault),
-    "vm.oom_kill": lambda _kw: (
-        None if (oom := vmstat().oom_kill) is None else float(oom)
-    ),
+    "vm.oom_kill": lambda _kw: (None if (oom := vmstat().oom_kill) is None else float(oom)),
 }
 
 
@@ -146,6 +154,94 @@ def _summarize(values: list[float | None]) -> dict[str, float] | None:
     }
 
 
+def _cpu_rate_first(
+    metrics: Sequence[str],
+    _kwargs: dict[str, Any],
+) -> CpuTimes | None:
+    if not _CPU_RATE_METRICS.intersection(metrics):
+        return None
+    return cpu_times()
+
+
+def _cpu_rate_second(
+    first: CpuTimes,
+    metrics: Sequence[str],
+    _kwargs: dict[str, Any],
+    values: dict[str, float],
+) -> None:
+    # CPU percent uses counter deltas, not the shared wall-clock window.
+    cpu = cpu_utilization_from_samples(first, cpu_times())
+    if "cpu_percent" in metrics:
+        values["cpu_percent"] = cpu.percent
+
+
+def _net_rate_first(
+    metrics: Sequence[str],
+    kwargs: dict[str, Any],
+) -> tuple[NetworkInterface, float] | None:
+    if not _NET_RATE_METRICS.intersection(metrics):
+        return None
+    return (
+        network_interface(_require_iface(kwargs), include_counters=True),
+        time.monotonic(),
+    )
+
+
+def _net_rate_second(
+    first: tuple[NetworkInterface, float],
+    metrics: Sequence[str],
+    kwargs: dict[str, Any],
+    values: dict[str, float],
+) -> None:
+    net_first, net_started = first
+    net = net_rates_from_samples(
+        net_first,
+        network_interface(_require_iface(kwargs), include_counters=True),
+        interval_s=time.monotonic() - net_started,
+    )
+    if "net.rx_bps" in metrics:
+        values["net.rx_bps"] = net.rx_bps
+    if "net.tx_bps" in metrics:
+        values["net.tx_bps"] = net.tx_bps
+
+
+def _disk_rate_first(
+    metrics: Sequence[str],
+    kwargs: dict[str, Any],
+) -> tuple[tuple[int, int, int, int], float] | None:
+    if not _DISK_RATE_METRICS.intersection(metrics):
+        return None
+    return (diskstats_row(_require_device(kwargs)), time.monotonic())
+
+
+def _disk_rate_second(
+    first: tuple[tuple[int, int, int, int], float],
+    metrics: Sequence[str],
+    kwargs: dict[str, Any],
+    values: dict[str, float],
+) -> None:
+    disk_first, disk_started = first
+    device = _require_device(kwargs)
+    disk = disk_rates_from_samples(
+        disk_first,
+        diskstats_row(device),
+        device=device,
+        interval_s=time.monotonic() - disk_started,
+    )
+    if "disk.read_bps" in metrics:
+        values["disk.read_bps"] = disk.read_bps
+    if "disk.write_bps" in metrics:
+        values["disk.write_bps"] = disk.write_bps
+
+
+# Ordered cpu → net → disk: one shared sleep between all firsts and seconds.
+_RATE_FAMILY_HANDLERS: tuple[tuple[Any, Any], ...] = (
+    (_cpu_rate_first, _cpu_rate_second),
+    (_net_rate_first, _net_rate_second),
+    (_disk_rate_first, _disk_rate_second),
+)
+
+
 def _read_rate_family(
     metrics: Sequence[str],
     kwargs: dict[str, Any],
@@ -154,58 +250,78 @@ def _read_rate_family(
 ) -> dict[str, float]:
     """Sample all requested rate metrics with a single shared sleep for the tick."""
     values: dict[str, float] = {}
-    need_cpu = bool(_CPU_RATE_METRICS.intersection(metrics))
-    need_net = bool(_NET_RATE_METRICS.intersection(metrics))
-    need_disk = bool(_DISK_RATE_METRICS.intersection(metrics))
-    if not (need_cpu or need_net or need_disk):
+    firsts = [take_first(metrics, kwargs) for take_first, _ in _RATE_FAMILY_HANDLERS]
+    if all(first is None for first in firsts):
         return values
-
-    cpu_first = cpu_times() if need_cpu else None
-    net_first: NetworkInterface | None = None
-    net_started = 0.0
-    if need_net:
-        net_first = network_interface(_require_iface(kwargs), include_counters=True)
-        net_started = time.monotonic()
-    disk_first: tuple[int, int, int, int] | None = None
-    disk_started = 0.0
-    if need_disk:
-        disk_first = diskstats_row(_require_device(kwargs))
-        disk_started = time.monotonic()
 
     time.sleep(max(0.01, interval_s))
 
-    if need_cpu and cpu_first is not None:
-        # CPU percent uses counter deltas, not this wall-clock window.
-        cpu = cpu_utilization_from_samples(cpu_first, cpu_times())
-        if "cpu_percent" in metrics:
-            values["cpu_percent"] = cpu.percent
-    if need_net and net_first is not None:
-        net_second = network_interface(_require_iface(kwargs), include_counters=True)
-        net_elapsed = time.monotonic() - net_started
-        net = net_rates_from_samples(
-            net_first,
-            net_second,
-            interval_s=net_elapsed,
-        )
-        if "net.rx_bps" in metrics:
-            values["net.rx_bps"] = net.rx_bps
-        if "net.tx_bps" in metrics:
-            values["net.tx_bps"] = net.tx_bps
-    if need_disk and disk_first is not None:
-        device = _require_device(kwargs)
-        disk_second = diskstats_row(device)
-        disk_elapsed = time.monotonic() - disk_started
-        disk = disk_rates_from_samples(
-            disk_first,
-            disk_second,
-            device=device,
-            interval_s=disk_elapsed,
-        )
-        if "disk.read_bps" in metrics:
-            values["disk.read_bps"] = disk.read_bps
-        if "disk.write_bps" in metrics:
-            values["disk.write_bps"] = disk.write_bps
+    for (_, take_second), first in zip(_RATE_FAMILY_HANDLERS, firsts):
+        if first is not None:
+            take_second(first, metrics, kwargs, values)
     return values
+
+
+def _validate_sampler_args(
+    metrics: Sequence[str],
+    *,
+    interval_s: float,
+    duration_s: float,
+) -> None:
+    unknown = [name for name in metrics if name not in _METRIC_READERS]
+    if unknown:
+        raise ValueError(f"unsupported sample metrics: {unknown}")
+    if duration_s <= 0:
+        raise ValueError("duration_s must be > 0")
+    if interval_s <= 0:
+        raise ValueError("interval_s must be > 0")
+
+
+def _collect_tick_values(
+    metrics: Sequence[str],
+    kwargs: dict[str, Any],
+    *,
+    interval_s: float,
+    has_rates: bool,
+) -> dict[str, float | None]:
+    tick_started = time.perf_counter()
+    tick_values: dict[str, float | None] = {}
+    for name in metrics:
+        if name in _GAUGE_METRICS:
+            tick_values[name] = _METRIC_READERS[name](kwargs)
+
+    if has_rates:
+        tick_values.update(_read_rate_family(metrics, kwargs, interval_s=interval_s))
+        return tick_values
+
+    remaining_after_gauges = interval_s - (time.perf_counter() - tick_started)
+    if remaining_after_gauges > 0:
+        time.sleep(remaining_after_gauges)
+    return tick_values
+
+
+def _record_tick(
+    *,
+    metrics: Sequence[str],
+    tick_values: dict[str, float | None],
+    series: dict[str, list[float | None]],
+    writer: _CsvWriter,
+    elapsed: float,
+) -> None:
+    for name in metrics:
+        value = tick_values[name]
+        series[name].append(value)
+        if value is None:
+            # Blank cell: the sample was unavailable, not a measured number.
+            writer.writerow([f"{elapsed:.3f}", name, ""])
+        else:
+            writer.writerow([f"{elapsed:.3f}", name, f"{value:.6f}"])
+
+
+def _series_summaries(
+    series: dict[str, list[float | None]],
+) -> dict[str, dict[str, float]]:
+    return {name: summary for name, values in series.items() if (summary := _summarize(values)) is not None}
 
 
 def _run_sampler(
@@ -216,13 +332,7 @@ def _run_sampler(
     path: Path,
     kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    unknown = [name for name in metrics if name not in _METRIC_READERS]
-    if unknown:
-        raise ValueError(f"unsupported sample metrics: {unknown}")
-    if duration_s <= 0:
-        raise ValueError("duration_s must be > 0")
-    if interval_s <= 0:
-        raise ValueError("interval_s must be > 0")
+    _validate_sampler_args(metrics, interval_s=interval_s, duration_s=duration_s)
 
     series: dict[str, list[float | None]] = {name: [] for name in metrics}
     started = time.perf_counter()
@@ -237,44 +347,30 @@ def _run_sampler(
             if elapsed > duration_s and sample_index > 0:
                 break
 
-            tick_started = time.perf_counter()
-            tick_values: dict[str, float | None] = {}
-            for name in metrics:
-                if name in _GAUGE_METRICS:
-                    tick_values[name] = _METRIC_READERS[name](kwargs)
-
-            if has_rates:
-                tick_values.update(_read_rate_family(metrics, kwargs, interval_s=interval_s))
-            else:
-                remaining_after_gauges = interval_s - (time.perf_counter() - tick_started)
-                if remaining_after_gauges > 0:
-                    time.sleep(remaining_after_gauges)
-
-            for name in metrics:
-                value = tick_values[name]
-                series[name].append(value)
-                if value is None:
-                    # Blank cell: the sample was unavailable, not a measured number.
-                    writer.writerow([f"{elapsed:.3f}", name, ""])
-                else:
-                    writer.writerow([f"{elapsed:.3f}", name, f"{value:.6f}"])
+            tick_values = _collect_tick_values(
+                metrics,
+                kwargs,
+                interval_s=interval_s,
+                has_rates=has_rates,
+            )
+            _record_tick(
+                metrics=metrics,
+                tick_values=tick_values,
+                series=series,
+                writer=writer,
+                elapsed=elapsed,
+            )
 
             sample_index += 1
-            elapsed = time.perf_counter() - started
-            if elapsed >= duration_s:
+            if time.perf_counter() - started >= duration_s:
                 break
 
-    summaries = {
-        name: summary
-        for name, values in series.items()
-        if (summary := _summarize(values)) is not None
-    }
     return {
         "path": str(path),
         "samples": sample_index,
         "duration_s": round(time.perf_counter() - started, 3),
         "metrics": list(metrics),
-        "summaries": summaries,
+        "summaries": _series_summaries(series),
     }
 
 
@@ -348,6 +444,12 @@ def capture(
     verify_cpu_max_percent/verify_rss_delta_mb using the capture key.
     See the telemetry workflow and platform matrix.
     """
+    _logger.info(
+        "Sampling host metrics %s every %s s for %s s",
+        tuple(metrics),
+        interval_s,
+        duration_s,
+    )
     artifact_path = resolve_artifact_path(path if path is not None else f"host_sample_{key}.csv")
     _logger.debug(
         "Host sample capture key=%s metrics=%s interval_s=%s duration_s=%s path=%s",
@@ -397,6 +499,7 @@ def measure_summary(*, key: str, metric: str, summary: dict[str, float]) -> dict
     :returns: Summary mapping including ``metric``.
     :rtype: dict[str, Any]
     """
+    _logger.info("Recording host sample summary for %s", metric)
     _ = key
     payload: dict[str, Any] = dict(summary)
     payload["metric"] = metric
@@ -420,7 +523,10 @@ def _check_summary_bound(
     from colosseum.decorators import missing_measurement_result
 
     row = get_context().db.get_measurement(
-        _DOMAIN, "sample.measure_summary", key, row_index=0,
+        _DOMAIN,
+        "sample.measure_summary",
+        key,
+        row_index=0,
     )
     if row is None or row.value is None:
         return missing_measurement_result(key=key, optional=optional)
@@ -463,6 +569,7 @@ def verify_delta_max(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking sample delta for %s is at most %s", key, maximum)
     return _check_summary_bound(key=key, field="delta", maximum=maximum, optional=optional)
 
 
@@ -485,6 +592,7 @@ def verify_max(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking sample maximum for %s is at most %s", key, maximum)
     return _check_summary_bound(key=key, field="max", maximum=maximum, optional=optional)
 
 
@@ -507,8 +615,12 @@ def verify_rss_delta_mb(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking sample RSS delta for %s is at most %s MB", key, maximum)
     return _check_summary_bound(
-        key=f"{key}.proc.rss_mb", field="delta", maximum=maximum, optional=optional,
+        key=f"{key}.proc.rss_mb",
+        field="delta",
+        maximum=maximum,
+        optional=optional,
     )
 
 
@@ -531,8 +643,12 @@ def verify_temp_max_c(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking sample temperature for %s is at most %s C", key, maximum)
     return _check_summary_bound(
-        key=f"{key}.temp_c", field="max", maximum=maximum, optional=optional,
+        key=f"{key}.temp_c",
+        field="max",
+        maximum=maximum,
+        optional=optional,
     )
 
 
@@ -555,6 +671,10 @@ def verify_cpu_max_percent(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking sample CPU for %s is at most %s percent", key, maximum)
     return _check_summary_bound(
-        key=f"{key}.cpu_percent", field="max", maximum=maximum, optional=optional,
+        key=f"{key}.cpu_percent",
+        field="max",
+        maximum=maximum,
+        optional=optional,
     )

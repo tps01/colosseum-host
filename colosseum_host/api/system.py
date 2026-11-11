@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from colosseum.decorators import VerificationResult, measurement, verification
+from colosseum.logging import get_logger
 
 from colosseum_host.api._verify import maximum_verifier, minimum_verifier
 from colosseum_host.host.collectors import (
@@ -22,6 +23,7 @@ from colosseum_host.host.collectors import (
 )
 
 _DOMAIN = "host"
+_logger = get_logger("colosseum.host")
 
 
 @measurement(dry_run="call")
@@ -34,6 +36,7 @@ def measure_python_version(*, key: str) -> str:
     :returns: ``platform.python_version()`` value.
     :rtype: str
     """
+    _logger.info("Sampling host Python version")
     _ = key
     return common.python_version()
 
@@ -48,6 +51,7 @@ def measure_platform(*, key: str) -> str:
     :returns: Platform name string.
     :rtype: str
     """
+    _logger.info("Sampling host platform")
     _ = key
     return common.platform_name()
 
@@ -62,6 +66,7 @@ def measure_machine(*, key: str) -> str:
     :returns: Machine identifier string.
     :rtype: str
     """
+    _logger.info("Sampling host machine")
     _ = key
     return common.machine()
 
@@ -76,6 +81,7 @@ def measure_hostname(*, key: str) -> str:
     :returns: Hostname string.
     :rtype: str
     """
+    _logger.info("Sampling host hostname")
     _ = key
     return common.hostname()
 
@@ -90,6 +96,7 @@ def measure_cpu_count(*, key: str) -> float:
     :returns: CPU count as float.
     :rtype: float
     """
+    _logger.info("Sampling host CPU count")
     _ = key
     return common.cpu_count()
 
@@ -104,6 +111,7 @@ def measure_cpu_model(*, key: str) -> str:
     :returns: CPU model string, or empty string if unavailable.
     :rtype: str
     """
+    _logger.info("Sampling host CPU model")
     _ = key
     return common.cpu_model() or ""
 
@@ -118,6 +126,7 @@ def measure_uname(*, key: str) -> str:
     :returns: Kernel/OS identity string.
     :rtype: str
     """
+    _logger.info("Sampling host uname")
     _ = key
     return uname_string()
 
@@ -132,6 +141,7 @@ def measure_kernel_release(*, key: str) -> str:
     :returns: Kernel release (Linux) or OS version (Windows).
     :rtype: str
     """
+    _logger.info("Sampling host kernel release")
     _ = key
     return uname_release()
 
@@ -146,6 +156,7 @@ def measure_loadavg(*, key: str) -> dict[str, float]:
     :returns: Mapping with ``load1``, ``load5``, and ``load15``.
     :rtype: dict[str, float]
     """
+    _logger.info("Sampling host load average")
     _ = key
     return loadavg().as_dict()
 
@@ -160,6 +171,7 @@ def measure_memory_available_mb(*, key: str) -> float:
     :returns: Available memory in megabytes.
     :rtype: float
     """
+    _logger.info("Sampling host available memory")
     _ = key
     return memory_available_mb()
 
@@ -174,6 +186,7 @@ def measure_meminfo(*, key: str) -> dict[str, float]:
     :returns: Mapping with ``total_mb``, ``available_mb``, swap fields.
     :rtype: dict[str, float]
     """
+    _logger.info("Sampling host memory info")
     _ = key
     return meminfo().as_dict()
 
@@ -190,6 +203,10 @@ def measure_disk_free_gb(*, key: str, path: str | None = None) -> float:
     :returns: Free space in gigabytes.
     :rtype: float
     """
+    _logger.info(
+        "Sampling host disk free space at %s",
+        path if path is not None else "the working directory",
+    )
     _ = key
     return common.disk_free_gb(path)
 
@@ -204,6 +221,7 @@ def measure_uptime_s(*, key: str) -> float:
     :returns: Uptime in seconds.
     :rtype: float
     """
+    _logger.info("Sampling host uptime")
     _ = key
     return uptime_s()
 
@@ -220,6 +238,7 @@ def measure_thermal_temp_c(*, key: str, zone: int = 0) -> float:
     :returns: Temperature in degrees Celsius.
     :rtype: float
     """
+    _logger.info("Sampling host thermal zone %s", zone)
     _ = key
     return thermal_temp_c(zone=zone)
 
@@ -236,6 +255,7 @@ def measure_cpu_percent(*, key: str, interval_s: float = 0.2) -> float:
     :returns: Busy CPU percentage.
     :rtype: float
     """
+    _logger.info("Sampling host CPU")
     _ = key
     return cpu_utilization(interval_s=interval_s).percent
 
@@ -252,6 +272,7 @@ def measure_cpu_utilization(*, key: str, interval_s: float = 0.2) -> dict[str, f
     :returns: Mapping with overall and per-state percentages.
     :rtype: dict[str, float]
     """
+    _logger.info("Sampling host CPU utilization over %s s", interval_s)
     _ = key
     return cpu_utilization(interval_s=interval_s).as_dict()
 
@@ -267,6 +288,7 @@ def measure_vmstat(*, key: str) -> dict[str, int | None]:
         ``oom_kill`` is ``None`` when the kernel does not publish the counter.
     :rtype: dict[str, int | None]
     """
+    _logger.info("Sampling host vmstat")
     _ = key
     return vmstat().as_dict()
 
@@ -290,6 +312,7 @@ def measure_disk_rates(
     :returns: Mapping with read/write bps and iops.
     :rtype: dict[str, Any]
     """
+    _logger.info("Sampling host disk rates for %s", device)
     _ = key
     return disk_rates(device=device, interval_s=interval_s).as_dict()
 
@@ -342,6 +365,7 @@ def verify_python_version(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking host Python version prefix %s", version_prefix)
     from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 
@@ -354,12 +378,14 @@ def verify_python_version(
             resolved = str(profile_value)
     if resolved is None:
         raise TypeError(
-            "verify_python_version requires version_prefix= or "
-            "[host.profile].python_version_prefix",
+            "verify_python_version requires version_prefix= or [host.profile].python_version_prefix",
         )
 
     row = get_context().db.get_measurement(
-        _DOMAIN, "system.measure_python_version", key, row_index=0,
+        _DOMAIN,
+        "system.measure_python_version",
+        key,
+        row_index=0,
     )
     if row is None or row.value is None:
         return missing_measurement_result(key=key, optional=optional)
@@ -394,6 +420,7 @@ def verify_platform(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking host platform is %s", expected_platform)
     from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 
@@ -442,6 +469,7 @@ def verify_oom_kill(
     :returns: VerificationResult with PASS, FAIL, or ERROR status.
     :rtype: VerificationResult
     """
+    _logger.info("Checking host OOM kills are at most %s", maximum)
     from colosseum.context import get_context
     from colosseum.decorators import missing_measurement_result
 
