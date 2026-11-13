@@ -381,6 +381,8 @@ def net_rates_from_samples(
     def delta(a: int | None, b: int | None) -> float:
         if a is None or b is None:
             raise ValueError("network counters unavailable for rate calculation")
+        if b < a:
+            raise ValueError("network counter decreased; sampling window is invalid")
         return float(b - a)
 
     return NetRates(

@@ -392,3 +392,15 @@ def test_meminfo_ignores_overflowing_memory_rows() -> None:
         pytest.raises(OSError, match="MemTotal/MemAvailable"),
     ):
         linux.meminfo()
+
+
+def test_network_counter_reset_rejects_window() -> None:
+    from dataclasses import replace
+
+    from colosseum_host.host.collectors import linux
+    from colosseum_host.host.collectors.types import NetworkInterface
+
+    first = NetworkInterface(name="eth0", rx_bytes=100, tx_bytes=100, rx_packets=100, tx_packets=100)
+    for field in ("rx_bytes", "tx_bytes", "rx_packets", "tx_packets"):
+        with pytest.raises(ValueError, match="counter decreased"):
+            linux.net_rates_from_samples(first, replace(first, **{field: 1}), interval_s=1.0)
