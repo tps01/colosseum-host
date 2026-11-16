@@ -66,7 +66,7 @@ def collect_profile(*, disk_path: str | None = None) -> dict[str, Any]:
         "cpu_count": common.cpu_count(),
         "cpu_model": common.cpu_model(),
         "kernel": kernel,
-        "memory_available_mb": memory.get("available_mb", memory_available_mb()),
+        "memory_available_mb": memory["available_mb"] if "available_mb" in memory else memory_available_mb(),
         "memory": memory,
         "disk_free_gb": common.disk_free_gb(disk_path),
         "uptime_s": uptime_s(),
