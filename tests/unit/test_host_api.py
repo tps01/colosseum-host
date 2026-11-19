@@ -563,3 +563,17 @@ def test_measure_interface_does_not_request_counters_on_windows(ctx) -> None:
     iface.assert_called_once_with("Ethernet", include_counters=False)
     assert recorded["name"] == "Ethernet"
     assert recorded["rx_bytes"] is None
+@pytest.mark.parametrize("snapshot", [{"available_mb": 0.0}, {}, None])
+def test_profile_memory_fallback_is_lazy(ctx, snapshot):
+    from colosseum_host.host import profile
+
+    with patch.object(profile, "meminfo") as meminfo, patch.object(
+        profile, "memory_available_mb", return_value=123.0,
+    ) as fallback:
+        if snapshot is None:
+            meminfo.side_effect = OSError("unavailable")
+        else:
+            meminfo.return_value.as_dict.return_value = snapshot
+        result = profile.collect_profile()
+    assert result["memory_available_mb"] == (0.0 if snapshot else 123.0)
+    assert fallback.call_count == (0 if snapshot else 1)
