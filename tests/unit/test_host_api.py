@@ -274,6 +274,19 @@ def test_measure_cpu_percent(ctx) -> None:
     assert row.value == 33.0
 
 
+@pytest.mark.parametrize("argument", ["interval_s", "duration_s"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf"), 0.0, -1.0])
+def test_sample_capture_rejects_invalid_timing_before_creating_artifact(ctx, argument, value) -> None:
+    with (
+        patch.object(sample, "resolve_artifact_path") as resolve,
+        patch.object(sample, "_collect_tick_values") as collect,
+        pytest.raises(ValueError, match=rf"{argument} must be finite and > 0"),
+    ):
+        sample.capture(key="invalid", **{argument: value})
+    resolve.assert_not_called()
+    collect.assert_not_called()
+
+
 def test_sample_capture_writes_csv_and_summaries(ctx, tmp_path) -> None:
     values = {"memory_available_mb": [100.0, 90.0, 80.0]}
 
@@ -563,3 +576,17 @@ def test_measure_interface_does_not_request_counters_on_windows(ctx) -> None:
     iface.assert_called_once_with("Ethernet", include_counters=False)
     assert recorded["name"] == "Ethernet"
     assert recorded["rx_bytes"] is None
+@pytest.mark.parametrize("snapshot", [{"available_mb": 0.0}, {}, None])
+def test_profile_memory_fallback_is_lazy(ctx, snapshot):
+    from colosseum_host.host import profile
+
+    with patch.object(profile, "meminfo") as meminfo, patch.object(
+        profile, "memory_available_mb", return_value=123.0,
+    ) as fallback:
+        if snapshot is None:
+            meminfo.side_effect = OSError("unavailable")
+        else:
+            meminfo.return_value.as_dict.return_value = snapshot
+        result = profile.collect_profile()
+    assert result["memory_available_mb"] == (0.0 if snapshot else 123.0)
+    assert fallback.call_count == (0 if snapshot else 1)
