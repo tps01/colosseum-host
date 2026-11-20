@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import math
 import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -271,10 +272,10 @@ def _validate_sampler_args(
     unknown = [name for name in metrics if name not in _METRIC_READERS]
     if unknown:
         raise ValueError(f"unsupported sample metrics: {unknown}")
-    if duration_s <= 0:
-        raise ValueError("duration_s must be > 0")
-    if interval_s <= 0:
-        raise ValueError("interval_s must be > 0")
+    if not math.isfinite(duration_s) or duration_s <= 0:
+        raise ValueError("duration_s must be finite and > 0")
+    if not math.isfinite(interval_s) or interval_s <= 0:
+        raise ValueError("interval_s must be finite and > 0")
 
 
 def _collect_tick_values(
@@ -332,8 +333,6 @@ def _run_sampler(
     path: Path,
     kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    _validate_sampler_args(metrics, interval_s=interval_s, duration_s=duration_s)
-
     series: dict[str, list[float | None]] = {name: [] for name in metrics}
     started = time.perf_counter()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -419,9 +418,9 @@ def capture(
     :type key: str
     :param metrics: Metric names to sample.
     :type metrics: Sequence[str], optional
-    :param interval_s: Seconds between samples (also the requested rate window).
+    :param interval_s: Finite positive seconds between samples (also the requested rate window).
     :type interval_s: float, optional
-    :param duration_s: Total sampling duration in seconds.
+    :param duration_s: Finite positive total sampling duration in seconds.
     :type duration_s: float, optional
     :param path: Relative artifact path under the run directory. Omit it to
         write ``host_sample_{key}.csv``. Pass a path to choose the file,
@@ -444,9 +443,11 @@ def capture(
     verify_cpu_max_percent/verify_rss_delta_mb using the capture key.
     See the telemetry workflow and platform matrix.
     """
+    metrics = tuple(metrics)
+    _validate_sampler_args(metrics, interval_s=interval_s, duration_s=duration_s)
     _logger.info(
         "Sampling host metrics %s every %s s for %s s",
-        tuple(metrics),
+        metrics,
         interval_s,
         duration_s,
     )
@@ -454,7 +455,7 @@ def capture(
     _logger.debug(
         "Host sample capture key=%s metrics=%s interval_s=%s duration_s=%s path=%s",
         key,
-        tuple(metrics),
+        metrics,
         interval_s,
         duration_s,
         artifact_path,
@@ -467,7 +468,7 @@ def capture(
     if device is not None:
         kwargs["device"] = device
     result = _run_sampler(
-        metrics=tuple(metrics),
+        metrics=metrics,
         interval_s=interval_s,
         duration_s=duration_s,
         path=Path(artifact_path),
