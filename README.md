@@ -1,5 +1,7 @@
 # Colosseum Host
 
+[![CI](https://github.com/tps01/colosseum-host/actions/workflows/ci.yml/badge.svg?branch=develop&event=pull_request)](https://github.com/tps01/colosseum-host/actions/workflows/ci.yml?query=branch%3Adevelop)
+
 ## Documentation
 
 API reference (GitHub Pages): <https://tps01.github.io/colosseum-host/>
